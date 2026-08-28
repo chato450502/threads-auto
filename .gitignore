@@ -1,0 +1,17 @@
+# APIキーを含む。絶対にコミットしないこと
+.env
+
+# Python仮想環境・キャッシュ
+.venv/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# 素材・出力（必要ならコメントアウトして管理してもよい）
+materials/
+output/posts/
+
+# 注意: posts/ 配下（queue.json / state.json / processed.json / token_meta.json）は
+# ワークフローが読み書きする「状態」なので .gitignore しない（コミット対象）

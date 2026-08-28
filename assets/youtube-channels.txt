@@ -1,0 +1,12 @@
+# 定番YouTubeチャンネルリスト（素材の供給源）
+# 1行1チャンネル。@ハンドル / URL / UC〜ID のいずれでも可。
+# 日本語チャンネル名でも解決できます（forHandle失敗時は検索APIでフォールバック）。
+# 後から自由に追加してください。#始まりの行はコメントとして無視されます。
+
+@ren_tube
+@chiharu_empowerer
+@koutamcbrown
+@ゆうたのクラスラジオ
+@yokichannel
+@haipa-okinntama
+@emamind

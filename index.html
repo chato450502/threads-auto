@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>社会実業推進機構</title>
+    <meta
+      name="description"
+      content="社会実業推進機構 — さぁ、世界をちょっと良くしよう。あなたにとっての社会実業とは何でしょうか？"
+    />
+    <style>
+      /* =========================
+       Base & Theme
+    ==========================*/
+      :root {
+        --bg: #0b0c10;
+        --panel: #121318;
+        --muted: #1a1d26;
+        --text: #f5f7fb;
+        --sub: #c9d1e6;
+        --accent: #49a6ff;
+        --accent-2: #5cf2b5;
+        --border: rgba(255, 255, 255, 0.08);
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        --radius: 18px;
+        --radius-sm: 12px;
+        --maxw: 1120px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          Helvetica, Arial, "Noto Sans JP", "Hiragino Kaku Gothic ProN",
+          "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .container {
+        max-width: var(--maxw);
+        margin: auto;
+        padding: 0 20px;
+      }
+      .muted {
+        color: var(--sub);
+      }
+      .tag {
+        display: inline-block;
+        padding: 0.35rem 0.65rem;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--sub);
+        font-size: 0.78rem;
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 1rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, #1b2030, #121622);
+        color: var(--text);
+        transition: transform 0.12s ease, box-shadow 0.12s ease,
+          border-color 0.2s ease;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+        will-change: transform;
+      }
+      .button:hover {
+        transform: translateY(-1px);
+        border-color: #2a3348;
+      }
+      .button--primary {
+        background: linear-gradient(180deg, #2b7cff, #2060cc);
+        border-color: #2b7cff;
+      }
+      .button--ghost {
+        background: transparent;
+      }
+      .pill {
+        border-radius: 999px;
+      }
+
+      /* =========================
+       Header
+    ==========================*/
+      header.site-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: saturate(140%) blur(8px);
+        background: linear-gradient(
+          180deg,
+          rgba(11, 12, 16, 0.9),
+          rgba(11, 12, 16, 0.55)
+        );
+        border-bottom: 1px solid var(--border);
+      }
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        height: 64px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .brand__logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: radial-gradient(
+            120px 60px at 30% 10%,
+            #5cf2b5 0%,
+            transparent 70%
+          ),
+          radial-gradient(120px 60px at 80% 70%, #49a6ff 0%, transparent 60%),
+          #10131b;
+        border: 1px solid var(--border);
+        box-shadow: inset 0 0 20px rgba(92, 242, 181, 0.2);
+      }
+      .brand__name {
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .menu {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .menu a {
+        padding: 0.5rem 0.8rem;
+        border-radius: 999px;
+        color: var(--sub);
+      }
+      .menu a:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+      }
+      .menu__cta {
+        margin-left: 0.4rem;
+      }
+
+      /* =========================
+       Hero
+    ==========================*/
+      .hero {
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(
+            80% 60% at 80% 0%,
+            rgba(73, 166, 255, 0.18) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            60% 50% at 0% 10%,
+            rgba(92, 242, 181, 0.18) 0%,
+            transparent 60%
+          ),
+          linear-gradient(180deg, #0b0c10 0%, #0c0f16 60%, #0b0c10 100%);
+        border-bottom: 1px solid var(--border);
+      }
+      .hero__wrap {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 28px;
+        padding: 56px 0;
+      }
+      @media (max-width: 900px) {
+        .hero__wrap {
+          grid-template-columns: 1fr;
+          padding: 40px 0;
+        }
+      }
+      .hero__copy h1 {
+        font-size: clamp(28px, 6vw, 48px);
+        line-height: 1.12;
+        margin: 0.35rem 0 1rem;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+      }
+      .hero__sub {
+        font-size: clamp(14px, 2.7vw, 18px);
+        color: var(--sub);
+      }
+      .hero__actions {
+        display: flex;
+        gap: 0.8rem;
+        flex-wrap: wrap;
+        margin-top: 1.25rem;
+      }
+      .hero__image {
+        min-height: 260px;
+        border-radius: var(--radius);
+        background: linear-gradient(
+            180deg,
+            rgba(92, 242, 181, 0.08),
+            rgba(73, 166, 255, 0.08)
+          ),
+          url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="%232060cc"/><stop offset="100%" stop-color="%235cf2b5"/></linearGradient></defs><rect width="100%" height="100%" fill="%2310131b"/><circle cx="320" cy="220" r="180" fill="url(%23g)" opacity="0.3"/><circle cx="860" cy="420" r="210" fill="url(%23g)" opacity="0.22"/></svg>')
+            center/cover no-repeat;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+      }
+
+      /* =========================
+       Sections
+    ==========================*/
+      section.section {
+        padding: 56px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .section__head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+      }
+      .section__title {
+        font-size: clamp(18px, 3.5vw, 26px);
+        font-weight: 800;
+      }
+      .section__desc {
+        color: var(--sub);
+        max-width: 720px;
+      }
+
+      /* =========================
+       Events list
+    ==========================*/
+      .events {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 980px) {
+        .events {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 640px) {
+        .events {
+          grid-template-columns: 1fr;
+        }
+      }
+      .event {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: linear-gradient(180deg, #12131b, #0f1219);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        box-shadow: var(--shadow);
+      }
+      .event__thumb {
+        border-radius: 12px;
+        aspect-ratio: 16/9;
+        background: #1b2130
+          url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="100%" height="100%" fill="%23161b26"/><text x="50%" y="50%" fill="%2349a6ff" font-size="26" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle">Event Image</text></svg>')
+          center/cover no-repeat;
+        border: 1px solid var(--border);
+      }
+      .event__meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--sub);
+        font-size: 0.85rem;
+      }
+      .event__title {
+        font-weight: 700;
+        line-height: 1.35;
+      }
+      .event__desc {
+        color: var(--sub);
+        font-size: 0.95rem;
+      }
+      .event__more {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        align-items: center;
+        margin-top: 0.25rem;
+      }
+      .event--featured {
+        grid-column: span 3;
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 18px;
+        padding: 18px;
+      }
+      .event--featured .event__thumb {
+        aspect-ratio: 16/10;
+      }
+      @media (max-width: 980px) {
+        .event--featured {
+          grid-template-columns: 1fr;
+          grid-column: span 2;
+        }
+      }
+      @media (max-width: 640px) {
+        .event--featured {
+          grid-column: span 1;
+        }
+      }
+
+      /* =========================
+       People carousel
+    ==========================*/
+      .carousel {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, #11131b, #0e1118);
+      }
+      .carousel__track {
+        display: flex;
+        gap: 14px;
+        padding: 16px;
+        scroll-behavior: smooth;
+        overflow: auto;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+      }
+      .carousel__track::-webkit-scrollbar {
+        display: none;
+      }
+      .person {
+        scroll-snap-align: start;
+        min-width: 260px;
+        max-width: 260px;
+        background: linear-gradient(180deg, #141826, #0f1118);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: var(--shadow);
+      }
+      .person__photo {
+        width: 100%;
+        aspect-ratio: 1/1;
+        border-radius: 12px;
+        background: #1b2130;
+        border: 1px solid var(--border);
+      }
+      .person__name {
+        font-weight: 700;
+        margin-top: 0.6rem;
+      }
+      .person__role {
+        color: var(--sub);
+        font-size: 0.9rem;
+      }
+      .carousel__nav {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      .carousel__btn {
+        pointer-events: auto;
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid var(--border);
+      }
+
+      /* =========================
+       Projects (モノ・コト)
+    ==========================*/
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 900px) {
+        .cards {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: linear-gradient(180deg, #12131b, #0f1219);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+      .card__thumb {
+        border-radius: 12px;
+        aspect-ratio: 16/9;
+        background: #172033;
+        border: 1px solid var(--border);
+      }
+      .card h3 {
+        margin: 0.6rem 0 0.3rem;
+      }
+      .card p {
+        color: var(--sub);
+      }
+
+      /* =========================
+       Schedule
+    ==========================*/
+      .schedule {
+        display: grid;
+        gap: 12px;
+      }
+      .schedule__item {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: linear-gradient(180deg, #11131a, #0e1117);
+      }
+      .schedule__date {
+        font-weight: 700;
+      }
+      .schedule__loc {
+        color: var(--sub);
+      }
+      .schedule__type {
+        color: var(--sub);
+      }
+
+      /* =========================
+       Sponsors
+    ==========================*/
+      .sponsors {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+      }
+      @media (max-width: 980px) {
+        .sponsors {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+      @media (max-width: 640px) {
+        .sponsors {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      .sponsor {
+        display: grid;
+        place-items: center;
+        height: 70px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #12131a;
+      }
+
+      /* =========================
+       Footer
+    ==========================*/
+      footer {
+        padding: 40px 0;
+        color: var(--sub);
+      }
+      .footer__inner {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid var(--border);
+        padding-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- =========================
+       Header
+  ==========================-->
+    <header class="site-header" aria-label="サイトヘッダー">
+      <div class="container nav">
+        <a href="#" class="brand" aria-label="社会実業推進機構 トップへ">
+          <div class="brand__logo" role="img" aria-label="機構ロゴ"></div>
+          <span class="brand__name">社会実業推進機構</span>
+        </a>
+        <nav class="menu" aria-label="グローバルナビ">
+          <a href="#events">イベント</a>
+          <a href="#people">社会実業家</a>
+          <a href="#projects">モノ・コト</a>
+          <a href="#schedule">今後の日程</a>
+          <a href="#sponsors">協賛</a>
+          <a href="#contact" class="button button--ghost pill menu__cta"
+            >お問い合わせ</a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <!-- =========================
+       Hero
+  ==========================-->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero__wrap">
+        <div class="hero__copy">
+          <span class="tag">Society × Business × Action</span>
+          <h1 id="hero-title">さぁ、世界をちょっと良くしよう</h1>
+          <p class="hero__sub">あなたにとっての社会実業とは何でしょうか？</p>
+          <div class="hero__actions">
+            <a href="#events" class="button button--primary"
+              >最新イベントを見る</a
+            >
+            <a href="#projects" class="button">取り組み（モノ・コト）</a>
+          </div>
+        </div>
+        <div class="hero__image" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- =========================
+       Events
+  ==========================-->
+    <section id="events" class="section" aria-labelledby="events-title">
+      <div class="container">
+        <div class="section__head">
+          <div>
+            <h2 id="events-title" class="section__title">
+              イベント＋バックナンバー
+            </h2>
+            <p class="section__desc">
+              最新のイベント情報を最上部に表示。ブログ的に更新できます。
+            </p>
+          </div>
+          <a href="#events" class="button button--ghost" id="filterAll"
+            >すべて</a
+          >
+        </div>
+        <div class="events" id="eventsList" role="list"></div>
+      </div>
+    </section>
+
+    <!-- =========================
+       People (Carousel)
+  ==========================-->
+    <section id="people" class="section" aria-labelledby="people-title">
+      <div class="container">
+        <div class="section__head">
+          <h2 id="people-title" class="section__title">社会実業家の紹介</h2>
+          <p class="section__desc">
+            5〜6名をスワイプで表示。名前・肩書・一言メッセージ。
+          </p>
+        </div>
+        <div class="carousel" aria-label="社会実業家カルーセル">
+          <div class="carousel__track" id="peopleTrack"></div>
+          <div class="carousel__nav">
+            <button class="carousel__btn" id="prevPeople" aria-label="前へ">
+              ◀
+            </button>
+            <button class="carousel__btn" id="nextPeople" aria-label="次へ">
+              ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================
+       Projects (モノ・コト)
+  ==========================-->
+    <section id="projects" class="section" aria-labelledby="projects-title">
+      <div class="container">
+        <div class="section__head">
+          <h2 id="projects-title" class="section__title">モノ・コト</h2>
+          <p class="section__desc">作っているものやサービスの紹介。</p>
+        </div>
+
+        <div class="cards" id="projectsCards">
+          <!-- JSで生成 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================
+       Schedule
+  ==========================-->
+    <section id="schedule" class="section" aria-labelledby="schedule-title">
+      <div class="container">
+        <div class="section__head">
+          <h2 id="schedule-title" class="section__title">今後の日程</h2>
+          <p class="section__desc">直近のイベントをタイムライン表示。</p>
+        </div>
+        <div class="schedule" id="scheduleList"></div>
+      </div>
+    </section>
+
+    <!-- =========================
+       Sponsors
+  ==========================-->
+    <section id="sponsors" class="section" aria-labelledby="sponsors-title">
+      <div class="container">
+        <div class="section__head">
+          <h2 id="sponsors-title" class="section__title">協賛</h2>
+          <p class="section__desc">協賛企業・個人のロゴ。</p>
+        </div>
+        <div class="sponsors" id="sponsorGrid"></div>
+      </div>
+    </section>
+
+    <!-- =========================
+       Footer
+  ==========================-->
+    <footer id="contact" class="container">
+      <div class="footer__inner">
+        <p>© <span id="year"></span> 社会実業推進機構</p>
+        <div>
+          <a
+            class="button button--ghost pill"
+            href="mailto:info@example.org"
+            aria-label="メールでお問い合わせ"
+            >お問い合わせ</a
+          >
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      /* ==========================================================
+     Content Data (更新しやすいように配列で分離)
+  ==========================================================*/
+      const EVENTS = [
+        {
+          title: "社会実業ミートアップ #08",
+          date: "2025-10-15",
+          place: "大阪",
+          type: "ワークショップ",
+          desc: "社会実業の事例共有とライトニングトーク。初参加歓迎！",
+          featured: true,
+          link: "#",
+          img: "",
+        },
+        {
+          title: "説明会｜2025年度コミュニティ参加ガイド",
+          date: "2025-09-10",
+          place: "オンライン",
+          type: "説明会",
+          desc: "年間の進め方、参加方法、各チームの役割などを解説。",
+          link: "#",
+          img: "",
+        },
+        {
+          title: "社会実業アワード・キックオフ",
+          date: "2025-11-30",
+          place: "東京",
+          type: "キックオフ",
+          desc: "アワード設計のディスカッション。審査観点の草案づくり。",
+          link: "#",
+          img: "",
+        },
+        {
+          title: "バックナンバー：実装ハッカソン 2024",
+          date: "2024-12-12",
+          place: "福岡",
+          type: "ハッカソン",
+          desc: "地域課題を“事業”視点で実装する2日間。",
+          link: "#",
+          img: "",
+        },
+      ];
+
+      const PEOPLE = [
+        {
+          name: "山田 太郎",
+          role: "社会実業家 / Water Tech",
+          quote: "課題の真ん中に事業を置く。",
+          photo: "",
+        },
+        {
+          name: "佐藤 花",
+          role: "エディター / コミュニティ",
+          quote: "声にならない現場の粒度で。",
+          photo: "",
+        },
+        {
+          name: "Michael Chen",
+          role: "材料研究 / スタートアップ",
+          quote: "素材から倫理を設計する。",
+          photo: "",
+        },
+        {
+          name: "田中 海",
+          role: "GX / プロダクト",
+          quote: "“続く仕組み”は美しい。",
+          photo: "",
+        },
+        {
+          name: "鈴木 空",
+          role: "政策連携",
+          quote: "制度と現実の行き来を軽やかに。",
+          photo: "",
+        },
+        {
+          name: "Aiko W",
+          role: "教育×実装",
+          quote: "子どもの手触りまで落とす。",
+          photo: "",
+        },
+      ];
+
+      const PROJECTS = [
+        {
+          title: "空気から水を作る技術",
+          desc: "大気中の水分を回収・濾過して飲用可能な水を生成する小型デバイス。災害時のレジリエンス向上にも貢献。",
+          img: "",
+        },
+        {
+          title: "マセケミカル",
+          desc: "低環境負荷の合成プロセスを用いた新素材群。再資源化とコスト適正化を両立させる化学プラットフォーム。",
+          img: "",
+        },
+      ];
+
+      const SCHEDULE = [
+        {
+          date: "2025-09-01",
+          title: "ワークショップ",
+          location: "東京（市ヶ谷）",
+          url: "#",
+        },
+        {
+          date: "2025-10-15",
+          title: "説明会",
+          location: "大阪（梅田）",
+          url: "#",
+        },
+        {
+          date: "2025-12-05",
+          title: "成果発表会",
+          location: "オンライン",
+          url: "#",
+        },
+      ];
+
+      const SPONSORS = [
+        "Alpha",
+        "Beta",
+        "Gamma",
+        "Delta",
+        "Epsilon",
+        "Zeta",
+        "Eta",
+        "Theta",
+      ];
+
+      /* ==========================================================
+     Helpers
+  ==========================================================*/
+      const fmtDate = (iso) => {
+        const d = new Date(iso + "T00:00:00");
+        const y = d.getFullYear();
+        const m = (d.getMonth() + 1).toString().padStart(2, "0");
+        const day = d.getDate().toString().padStart(2, "0");
+        return `${y}/${m}/${day}`;
+      };
+
+      /* ==========================================================
+     Render: Events
+  ==========================================================*/
+      (function renderEvents() {
+        const list = document.getElementById("eventsList");
+        const sorted = [...EVENTS].sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        );
+        const frag = document.createDocumentFragment();
+
+        sorted.forEach((ev, idx) => {
+          const isFeatured = ev.featured && idx === 0; // 常に最新+featuredを目立たせる
+          const art = document.createElement("article");
+          art.className = "event" + (isFeatured ? " event--featured" : "");
+          art.setAttribute("role", "listitem");
+
+          const thumb = document.createElement("div");
+          thumb.className = "event__thumb";
+          if (ev.img) thumb.style.backgroundImage = `url(${ev.img})`;
+
+          const wrap = document.createElement("div");
+          const meta = document.createElement("div");
+          meta.className = "event__meta";
+          meta.innerHTML = `
+        <span class="tag">${ev.type}</span>
+        <span class="muted">${fmtDate(ev.date)}・${ev.place}</span>
+      `;
+
+          const title = document.createElement("div");
+          title.className = "event__title";
+          title.textContent = ev.title;
+
+          const desc = document.createElement("p");
+          desc.className = "event__desc";
+          desc.textContent = ev.desc;
+
+          const more = document.createElement("div");
+          more.className = "event__more";
+          more.innerHTML = `<a class="button button--ghost pill" href="${ev.link}">詳細を見る</a>
+                        <span class="muted">#${ev.type}</span>`;
+
+          if (isFeatured) {
+            // 左：画像 右：本文
+            art.appendChild(thumb);
+            wrap.append(meta, title, desc, more);
+            art.appendChild(wrap);
+          } else {
+            // 縦積み
+            art.append(thumb, meta, title, desc, more);
+          }
+          frag.appendChild(art);
+        });
+        list.appendChild(frag);
+      })();
+
+      /* ==========================================================
+     Render: People (Carousel)
+  ==========================================================*/
+      (function renderPeople() {
+        const track = document.getElementById("peopleTrack");
+        const frag = document.createDocumentFragment();
+        PEOPLE.forEach((p) => {
+          const card = document.createElement("div");
+          card.className = "person";
+          card.innerHTML = `
+        <div class="person__photo" role="img" aria-label="${
+          p.name
+        }の写真" style="background-image:${
+            p.photo ? `url(${p.photo})` : "none"
+          }"></div>
+        <div class="person__name">${p.name}</div>
+        <div class="person__role">${p.role}</div>
+        <p class="muted" style="margin:.4rem 0 0;">${p.quote}</p>
+      `;
+          frag.appendChild(card);
+        });
+        track.appendChild(frag);
+
+        // Navigation
+        const prev = document.getElementById("prevPeople");
+        const next = document.getElementById("nextPeople");
+        const step = 280; // おおよそ1カード分
+
+        prev.addEventListener("click", () =>
+          track.scrollBy({ left: -step, behavior: "smooth" })
+        );
+        next.addEventListener("click", () =>
+          track.scrollBy({ left: +step, behavior: "smooth" })
+        );
+
+        // Drag / Swipe
+        let isDown = false,
+          startX = 0,
+          scrollStart = 0;
+        track.addEventListener("pointerdown", (e) => {
+          isDown = true;
+          startX = e.clientX;
+          scrollStart = track.scrollLeft;
+          track.setPointerCapture(e.pointerId);
+        });
+        track.addEventListener("pointermove", (e) => {
+          if (!isDown) return;
+          const dx = e.clientX - startX;
+          track.scrollLeft = scrollStart - dx;
+        });
+        ["pointerup", "pointercancel", "pointerleave"].forEach((ev) =>
+          track.addEventListener(ev, () => {
+            isDown = false;
+          })
+        );
+      })();
+
+      /* ==========================================================
+     Render: Projects
+  ==========================================================*/
+      (function renderProjects() {
+        const wrap = document.getElementById("projectsCards");
+        const frag = document.createDocumentFragment();
+        PROJECTS.forEach((pr) => {
+          const card = document.createElement("article");
+          card.className = "card";
+          card.innerHTML = `
+        <div class="card__thumb"></div>
+        <h3>${pr.title}</h3>
+        <p>${pr.desc}</p>
+      `;
+          frag.appendChild(card);
+        });
+        wrap.appendChild(frag);
+      })();
+
+      /* ==========================================================
+     Render: Schedule
+  ==========================================================*/
+      (function renderSchedule() {
+        const list = document.getElementById("scheduleList");
+        const frag = document.createDocumentFragment();
+        SCHEDULE.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(
+          (s) => {
+            const row = document.createElement("div");
+            row.className = "schedule__item";
+            row.innerHTML = `
+          <div><span class="schedule__date">${fmtDate(
+            s.date
+          )}</span>・<span class="schedule__type">${s.title}</span></div>
+          <div class="schedule__loc">${s.location}</div>
+          <a class="button button--ghost pill" href="${s.url}">詳細</a>
+        `;
+            frag.appendChild(row);
+          }
+        );
+        list.appendChild(frag);
+      })();
+
+      /* ==========================================================
+     Render: Sponsors
+  ==========================================================*/
+      (function renderSponsors() {
+        const grid = document.getElementById("sponsorGrid");
+        const frag = document.createDocumentFragment();
+        SPONSORS.forEach((name) => {
+          const el = document.createElement("div");
+          el.className = "sponsor";
+          el.textContent = name;
+          frag.appendChild(el);
+        });
+        grid.appendChild(frag);
+      })();
+
+      /* ==========================================================
+     Misc
+  ==========================================================*/
+      // current year
+      document.getElementById("year").textContent = new Date().getFullYear();
+
+      // smooth scroll for internal links (Safari fallback)
+      document.querySelectorAll('a[href^="#"]').forEach((a) => {
+        a.addEventListener("click", (e) => {
+          const id = a.getAttribute("href").slice(1);
+          if (!id) return;
+          const target = document.getElementById(id);
+          if (!target) return;
+          e.preventDefault();
+          const top =
+            target.getBoundingClientRect().top + window.pageYOffset - 70; // header offset
+          window.scrollTo({ top, behavior: "smooth" });
+          history.replaceState(null, "", "#" + id);
+        });
+      });
+    </script>
+  </body>
+</html>

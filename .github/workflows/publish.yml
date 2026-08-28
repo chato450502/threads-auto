@@ -1,0 +1,57 @@
+name: Publish Threads Posts
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # 15分おき（UTC基準。cronはUTCで動く点に注意）
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "ドライラン（実際には投稿しない）"
+        required: false
+        default: "false"
+
+# queue.json / processed.json を push で書き戻すため
+permissions:
+  contents: write
+
+# 実行の重複を防ぐ（前の実行が終わるまで次を走らせない）
+concurrency:
+  group: threads-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run publisher
+        env:
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          GRAPH_API_BASE: "https://graph.threads.net/v1.0"
+          LENGTH_MODE: "graphemes"
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: python src/publish.py
+
+      - name: Commit updated queue state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add posts/queue.json posts/state.json posts/processed.json
+          if git diff --cached --quiet; then
+            echo "変更なし（コミット不要）"
+          else
+            git commit -m "chore: update Threads slot state [skip ci]"
+            git push
+          fi

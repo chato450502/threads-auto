@@ -1,0 +1,5 @@
+# Threads自動投稿システムの依存
+requests>=2.31
+regex>=2024.0.0     # 絵文字を1文字として正しく数える（書記素クラスタ \X）
+PyNaCl>=1.5.0       # GitHub Secrets更新の暗号化（refresh_token.py）
+anthropic>=0.40     # Claude API（generate.py の下書き生成・AI採点）

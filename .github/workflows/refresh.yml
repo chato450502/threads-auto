@@ -1,0 +1,53 @@
+name: Refresh Threads Token
+
+on:
+  schedule:
+    - cron: "0 0 1 * *"   # 毎月1日 00:00 UTC に実行
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "ドライラン（トークン取得のみ・Secretは更新しない）"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Refresh long-lived token and update secret
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          GRAPH_API_BASE: "https://graph.threads.net/v1.0"
+          # Secretsを書き換えるための PAT（Secrets: Read and write 権限）
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          THREADS_TOKEN_SECRET_NAME: "THREADS_ACCESS_TOKEN"
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: python src/refresh_token.py
+
+      - name: Commit token meta
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add posts/token_meta.json
+          if git diff --cached --quiet; then
+            echo "変更なし（コミット不要）"
+          else
+            git commit -m "chore: update token expiry meta [skip ci]"
+            git push
+          fi
