@@ -124,12 +124,29 @@ def _client():
     return anthropic.Anthropic()  # ANTHROPIC_API_KEY を環境から解決
 
 
-def _extract_json(text: str) -> dict:
-    """本文中の最初の JSON オブジェクトを取り出してパース。"""
-    m = re.search(r"\{.*\}", text, re.DOTALL)
-    if not m:
-        raise ValueError(f"JSONが見つかりません: {text[:200]}")
-    return json.loads(m.group(0))
+CTA_DELIM = "===CTA==="
+
+
+def _split_body_cta(text: str) -> tuple[str, str]:
+    """モデル出力を本文とCTAに分割（JSONを使わず区切り文字方式で改行に強くする）。"""
+    text = (text or "").strip()
+    # コードフェンスや前置きの掃除
+    text = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", text).strip()
+    for delim in (CTA_DELIM, "---CTA---", "【CTA】", "＝＝＝CTA＝＝＝"):
+        if delim in text:
+            body, cta = text.split(delim, 1)
+            return body.strip(), cta.strip()
+    return text, ""  # 区切りが無ければCTA無し扱い → 機械チェックで弾いて再生成
+
+
+def _extract_score(text: str) -> tuple[int, str]:
+    """採点出力から0-100の整数と短評を取り出す。"""
+    text = (text or "").strip()
+    m = re.search(r"(100|[0-9]{1,2})", text)
+    score = int(m.group(1)) if m else 0
+    # 数字の後ろを短評とみなす
+    reason = text.replace(m.group(1), "", 1).strip()[:80] if m else text[:80]
+    return score, reason
 
 
 def _persona_context() -> str:
@@ -148,28 +165,50 @@ def generate_draft(slot_cfg: dict, recents: list[str]) -> dict:
         + _persona_context()
         + "\n\n【厳守ルール】"
         "\n- 本文は必ず「共感 → 痛み → 視点転換 → 実践Tips」の4段構成にする。"
-        "\n- 最後に、本文内容に合ったCTA（プロフィール誘導など）を1つ付ける。CTAは本文とは別に出力する。"
+        "\n- 最後に、本文内容に合ったCTA（プロフィール誘導など）を1つ付ける。"
         "\n- 全体（本文＋CTA）で500文字以内（日本語の文字数）。"
         "\n- アスタリスク（*）やページラベル（[1/3]等）は使わない。強調は「」を使う。"
         "\n- 断定的な誇大表現・性的表現・特定個人や性別を貶める表現は禁止。"
         "\n- 直近の投稿と内容・言い回しが重複しないようにする。"
-        "\n\n【出力形式】次のJSONのみを出力（前後に説明文を付けない）:"
-        '\n{"body": "本文（4段構成）", "cta": "CTA文"}'
+        "\n\n【文字数の予算（厳守）】本文は約320〜400字、CTAは約80〜120字、合計は必ず500字以内。"
+        "CTAは長い箇条書きにせず2〜4行に収める。"
+        "\n\n【出力形式】JSONやコードブロックは使わない。次の形式そのままで出力する（前置き・見出し・説明を付けない）:"
+        "\n本文をそのまま書く（改行そのままでOK）"
+        f"\n{CTA_DELIM}"
+        "\nCTA文をそのまま書く"
     )
     user = (
         f"【今回の枠のテーマ】{slot_cfg.get('theme','')}\n"
         f"【トーン】{slot_cfg.get('tone','')}\n\n"
-        f"【CTAの参考例（丸写し禁止・構成の参考のみ）】\n{cta_ref[:1500]}\n\n"
+        f"【CTAの参考例（丸写し禁止・構成と誘導の“機能”だけ参考。長さは真似ず短めに）】\n{cta_ref[:1200]}\n\n"
         f"【直近30投稿（重複回避のため。これらと似せない）】\n{recent_block}\n\n"
-        "上記を踏まえ、新しい投稿を1本、JSONで出力してください。"
+        f"上記を踏まえ、新しい投稿を1本、本文→{CTA_DELIM}→CTA の形式で、合計500字以内で出力してください。"
     )
     resp = client.messages.create(
         model=MODEL, max_tokens=2000, system=system,
         messages=[{"role": "user", "content": user}])
     text = "".join(b.text for b in resp.content if b.type == "text")
-    data = _extract_json(text)
-    body, cta = data.get("body", ""), data.get("cta", "")
+    body, cta = _split_body_cta(text)
+    # 500字超過なら意味・構成・CTAを保ったまま自動圧縮（再生成より安く確実）
+    if cta and tc.count_length(compose_text(body, cta)) > tc.MAX_LENGTH:
+        body, cta = _shorten(client, body, cta)
     return {"body": body, "cta": cta, "text": compose_text(body, cta)}
+
+
+def _shorten(client, body: str, cta: str) -> tuple[str, str]:
+    """全体が500字を超えたとき、意味・4段構成・CTAを保ったまま縮める。"""
+    system = (
+        "次のThreads投稿を、意味・語り口・4段構成（共感→痛み→視点転換→実践Tips）・CTAの機能を保ったまま、"
+        "全体で日本語460字以内に縮めてください。"
+        "\nアスタリスクやページラベルは使わない。"
+        f"\n出力は本文→{CTA_DELIM}→CTA の形式のみ（説明を付けない）。"
+    )
+    resp = client.messages.create(
+        model=MODEL, max_tokens=1500, system=system,
+        messages=[{"role": "user", "content": compose_text(body, cta)}])
+    text = "".join(b.text for b in resp.content if b.type == "text")
+    nb, nc = _split_body_cta(text)
+    return (nb, nc) if nc else (body, cta)
 
 
 def score_draft(draft_text: str, slot_cfg: dict, recents: list[str]) -> tuple[int, dict]:
@@ -177,25 +216,31 @@ def score_draft(draft_text: str, slot_cfg: dict, recents: list[str]) -> tuple[in
     client = _client()
     recent_block = "\n---\n".join(recents) if recents else "（まだありません）"
     system = (
-        "あなたはThreads投稿の品質評価者です。次の観点で0-100点の総合点を付けてください。"
+        "あなたはThreads投稿の品質評価者です。次の観点で総合点を0-100の整数で付けてください。"
         "\n1. トーン一致度（指定テーマ・トーンに合っているか）"
         "\n2. 4段構成（共感→痛み→視点転換→実践Tips）が成立しているか"
         "\n3. 直近30投稿との類似度（似ているほど減点）"
-        "\n次のJSONのみを出力: "
-        '{"score": 整数, "tone": 0-100, "structure": 0-100, "similarity_penalty": 0-100, "reason": "短評"}'
+        "\n\n【採点基準（アンカー）】"
+        "\n- 90〜100: 秀逸。"
+        "\n- 80〜89: そのまま投稿してよい水準。テーマ・トーンに合い、4段構成が成立し、直近と重複が無ければここ。"
+        "  絵文字や語尾の好み・些細な表現は減点対象にしない。"
+        "\n- 70〜79: 惜しい。トーンずれ・構成の欠け・既視感など気になる点が明確にある。"
+        "\n- 〜69: トーン不一致・構成崩壊・重複が濃いなど明確な問題。"
+        "\n重大な欠点が無ければ80以上を付けること。"
+        "\n\n【出力形式】1行目に点数の数字だけ（例: 85）。2行目に短い理由。JSONは使わない。"
     )
     user = (
         f"【テーマ】{slot_cfg.get('theme','')}\n【トーン】{slot_cfg.get('tone','')}\n\n"
         f"【評価対象の投稿】\n{draft_text}\n\n"
         f"【直近30投稿】\n{recent_block}\n\n"
-        "JSONで採点してください。"
+        "採点してください（1行目に数字、2行目に理由）。"
     )
     resp = client.messages.create(
-        model=MODEL, max_tokens=600, system=system,
+        model=MODEL, max_tokens=300, system=system,
         messages=[{"role": "user", "content": user}])
     text = "".join(b.text for b in resp.content if b.type == "text")
-    data = _extract_json(text)
-    return int(data.get("score", 0)), data
+    score, reason = _extract_score(text)
+    return score, {"reason": reason, "raw": text[:120]}
 
 
 # ---------------------------------------------------------------------------
