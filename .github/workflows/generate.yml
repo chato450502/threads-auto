@@ -45,7 +45,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add posts/queue.json fallback/evergreen.json
+          git add posts/queue.json posts/used_videos.json
           if git diff --cached --quiet; then
             echo "変更なし（コミット不要）"
           else

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""下書き自動生成スクリプト（Claude API）。
+"""下書き自動生成（kata-write 自動化版）。
 
-毎日 JST 3:00（generate.yml）に実行し、常に3日分（9本）の在庫を queue.json に維持する。
-在庫が足りない分の枠だけを生成する。
+YouTube字幕を素材に、kata-library の「型」を使って みれい の連投（スレッド）を生成する。
+毎日 JST 3:00（generate.yml）に実行し、常に3日分（9枠）の在庫を queue.json に維持する。
 
-品質ゲート（各下書きに適用）:
-  1. 機械チェック … 500文字以内 / URL5個以内 / CTAブロック有無 / 禁止表現（config/ng_words.json）
-  2. AI採点 … 別のClaude呼び出しで0-100点（トーン一致・4段構成・直近30投稿との類似度）
-  3. 80点未満なら再生成（最大3回）
-  4. 3回落ちたら fallback/evergreen.json の未使用定型投稿を1本使う
+kata-write の流れを自動化:
+  1. 素材: 定番チャンネル（assets/youtube-channels.txt）から未使用・伸びている動画を選び字幕取得
+  2. 型選択: kata-library の型を「直近2枠で使った型は避ける／同日同型2本は避ける」でローテーション
+  3. リライト: 型プロンプト＋_common-modules＋persona を適用し、素材の内容で連投を生成
+  4. CTA: 連投の最終投稿にプロフ/リンク誘導を みれい の声で付ける（ほぼ毎回）
+  5. 検証: 各投稿500字以内／アスタリスク無し／ページラベル無し
 
-枠ごとのテーマ・トーンは config/slots.json。生成時は直近30投稿の本文を渡し重複を避けさせる。
+各枠 = 1連投（型の thread_range に応じ 3〜10投稿）。
 
-ドライラン: DRY_RUN=true / --dry-run（Claudeを呼ばず、埋めるべき枠の一覧だけ表示）
+ドライラン: DRY_RUN=true / --dry-run（Claude・YouTubeを呼ばず不足枠のみ表示）
 """
 from __future__ import annotations
 
@@ -20,27 +21,31 @@ import argparse
 import datetime
 import json
 import re
+import sys
 from pathlib import Path
 
 import slots
 import threads_common as tc
 from threads_common import log
 
+sys.path.insert(0, str(tc.ROOT / "scripts"))
+import fetch_youtube as yt  # noqa: E402
+
 MODEL = tc.env("GENERATE_MODEL", "claude-sonnet-4-6")
 INVENTORY_DAYS = 3
-SLOTS_PER_DAY_TARGET = INVENTORY_DAYS * 3     # 9本
+SLOTS_PER_DAY_TARGET = INVENTORY_DAYS * 3
 MAX_REGEN = 3
-PASS_SCORE = 80
-RECENT_N = 30
+POST_DELIM = "===NEXT==="
 
 QUEUE_PATH = tc.ROOT / "posts" / "queue.json"
-NG_WORDS_PATH = tc.ROOT / "config" / "ng_words.json"
-EVERGREEN_PATH = tc.ROOT / "fallback" / "evergreen.json"
-TOKEN_META_PATH = tc.ROOT / "posts" / "token_meta.json"
+USED_VIDEOS_PATH = tc.ROOT / "posts" / "used_videos.json"
+KATA_DIR = tc.ROOT / "kata-library"
 PERSONA_PATH = tc.ROOT / "assets" / "persona.md"
 CTA_REF_PATH = tc.ROOT / "assets" / "cta.md"
+COMMON_PATH = KATA_DIR / "_common-modules.md"
+CLAUDE_MD = tc.ROOT / "CLAUDE.md"
 
-_URL_RE = re.compile(r"https?://[^\s]+", re.IGNORECASE)
+PAGE_LABEL = re.compile(r"\[\s*\d+\s*/\s*\d+\s*\]")
 
 
 # ---------------------------------------------------------------------------
@@ -62,252 +67,201 @@ def read_text_file(path: Path) -> str:
     return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
-def load_ng_words() -> list[str]:
-    data = load_json(NG_WORDS_PATH, {"ng_words": []})
-    if isinstance(data, list):
-        return data
-    return data.get("ng_words", [])
-
-
 # ---------------------------------------------------------------------------
-# 在庫計算・直近投稿
+# 型ライブラリの読み込み
 # ---------------------------------------------------------------------------
-def compose_text(body: str, cta: str) -> str:
-    body = (body or "").strip()
-    cta = (cta or "").strip()
-    return (body + "\n\n" + cta).strip() if cta else body
+def _parse_frontmatter(text: str):
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) >= 3:
+            fm = {}
+            for line in parts[1].splitlines():
+                if ":" in line:
+                    k, _, v = line.partition(":")
+                    fm[k.strip()] = v.strip()
+            return fm, parts[2]
+    return {}, text
 
 
-def needed_slots(queue: list):
-    """これから埋めるべき（下書きが無い）直近の枠を返す。"""
-    existing = {it.get("slot_key") for it in queue
-                if it.get("status") in ("pending", "posted")}
+def _section(body: str, heading: str) -> str:
+    """'## <heading>' 見出し以下、次の '## ' 手前までを返す。"""
+    lines = body.splitlines()
+    out, capturing = [], False
+    for ln in lines:
+        if ln.startswith("## "):
+            if capturing:
+                break
+            capturing = heading in ln
+            continue
+        if capturing:
+            out.append(ln)
+    return "\n".join(out).strip()
+
+
+def load_katas() -> list[dict]:
     out = []
-    for dt, scfg in slots.upcoming_slots(SLOTS_PER_DAY_TARGET):
-        if slots.slot_key(dt) not in existing:
-            out.append((dt, scfg))
+    for p in sorted(KATA_DIR.glob("*.md")):
+        if p.name in ("INDEX.md", "_common-modules.md"):
+            continue
+        text = p.read_text(encoding="utf-8")
+        fm, body = _parse_frontmatter(text)
+        out.append({
+            "slug": fm.get("name", p.stem),
+            "category": fm.get("category", ""),
+            "thread_range": fm.get("thread_range", "3-5"),
+            "fit": _section(body, "適合する素材の特徴"),
+            "prompt": _section(body, "ブロック別の型プロンプト"),
+            "path": p,
+        })
     return out
 
 
-def recent_texts(queue: list, n: int = RECENT_N) -> list[str]:
-    """直近の投稿本文（posted優先・新しい順）を最大n件。重複回避のプロンプトに使う。"""
-    items = [it for it in queue if it.get("text")]
-    items.sort(key=lambda it: (it.get("status") == "posted", it.get("slot_key", "")),
-               reverse=True)
-    return [it["text"] for it in items[:n]]
+def thread_range(tr: str):
+    m = re.findall(r"\d+", tr or "")
+    if len(m) >= 2:
+        return int(m[0]), int(m[1])
+    if len(m) == 1:
+        return int(m[0]), int(m[0])
+    return 3, 5
 
 
 # ---------------------------------------------------------------------------
-# 品質ゲート 1: 機械チェック
+# 型ローテーション
 # ---------------------------------------------------------------------------
-def machine_check(body: str, cta: str, ng_words: list[str]):
-    text = compose_text(body, cta)
-    reasons = []
-    length = tc.count_length(text)
-    if length > tc.MAX_LENGTH:
-        reasons.append(f"{tc.MAX_LENGTH}文字超過（{length}文字）")
-    if len(_URL_RE.findall(text)) > tc.MAX_URLS:
-        reasons.append(f"URL{tc.MAX_URLS}個超過")
-    if not (cta or "").strip():
-        reasons.append("CTAブロックが無い")
-    hit = [w for w in ng_words if w and w in text]
-    if hit:
-        reasons.append("禁止表現: " + ", ".join(hit))
-    return (len(reasons) == 0), reasons
+def choose_kata(katas: list[dict], queue: list, slot_date: str) -> dict:
+    """直近2枠で使った型を避け、同日に同じ型を2本作らない。残りから使用回数の少ない型を選ぶ。"""
+    withk = [it for it in queue if it.get("kata")]
+    withk.sort(key=lambda it: it.get("slot_key", ""), reverse=True)
+    recent2 = [it["kata"] for it in withk[:2]]
+    same_day = {it["kata"] for it in queue
+                if it.get("kata") and str(it.get("slot_key", "")).startswith(slot_date)}
+
+    allowed = [k for k in katas if k["slug"] not in recent2 and k["slug"] not in same_day]
+    if not allowed:
+        allowed = [k for k in katas if k["slug"] not in same_day] or katas
+
+    def uses(k):
+        return sum(1 for it in queue if it.get("kata") == k["slug"])
+    allowed.sort(key=uses)
+    return allowed[0]
 
 
 # ---------------------------------------------------------------------------
-# Claude API
+# 在庫計算・素材プール
+# ---------------------------------------------------------------------------
+def needed_slots(queue: list):
+    existing = {it.get("slot_key") for it in queue
+                if it.get("status") in ("pending", "posted", "in_progress")}
+    return [(dt, s) for dt, s in slots.upcoming_slots(SLOTS_PER_DAY_TARGET)
+            if slots.slot_key(dt) not in existing]
+
+
+def build_video_pool(need: int, used_ids: set) -> list[dict]:
+    """定番チャンネルから、未使用・2分以上・再生回数上位の動画を集める。"""
+    pool, seen = [], set()
+    for ch in yt.load_channel_list():
+        if len(pool) >= need + 3:
+            break
+        try:
+            vids = yt.rank_channel_videos(ch, recent=30, min_minutes=2)
+        except Exception as e:  # noqa: BLE001
+            log(f"  [warn] チャンネル {ch} の取得失敗: {e}")
+            continue
+        for v in vids:
+            if v["id"] in used_ids or v["id"] in seen:
+                continue
+            seen.add(v["id"])
+            pool.append(v)
+    return pool
+
+
+# ---------------------------------------------------------------------------
+# Claude 生成
 # ---------------------------------------------------------------------------
 def _client():
     import anthropic
-    return anthropic.Anthropic()  # ANTHROPIC_API_KEY を環境から解決
+    return anthropic.Anthropic()
 
 
-CTA_DELIM = "===CTA==="
+def _note_link() -> str:
+    md = read_text_file(CLAUDE_MD)
+    m = re.search(r"リンク誘導先（note）\*\*:\s*(\S+)", md)
+    return m.group(1) if m else ""
 
 
-def _split_body_cta(text: str) -> tuple[str, str]:
-    """モデル出力を本文とCTAに分割（JSONを使わず区切り文字方式で改行に強くする）。"""
-    text = (text or "").strip()
-    # コードフェンスや前置きの掃除
-    text = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", text).strip()
-    for delim in (CTA_DELIM, "---CTA---", "【CTA】", "＝＝＝CTA＝＝＝"):
-        if delim in text:
-            body, cta = text.split(delim, 1)
-            return body.strip(), cta.strip()
-    return text, ""  # 区切りが無ければCTA無し扱い → 機械チェックで弾いて再生成
+def _split_posts(text: str) -> list[str]:
+    text = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", (text or "").strip()).strip()
+    parts = [p.strip() for p in text.split(POST_DELIM)]
+    return [p for p in parts if p]
 
 
-def _extract_score(text: str) -> tuple[int, str]:
-    """採点出力から0-100の整数と短評を取り出す。"""
-    text = (text or "").strip()
-    m = re.search(r"(100|[0-9]{1,2})", text)
-    score = int(m.group(1)) if m else 0
-    # 数字の後ろを短評とみなす
-    reason = text.replace(m.group(1), "", 1).strip()[:80] if m else text[:80]
-    return score, reason
+def validate_posts(posts: list[str]) -> list[str]:
+    issues = []
+    for i, p in enumerate(posts, 1):
+        n = tc.count_length(p)
+        if n > tc.MAX_LENGTH:
+            issues.append(f"{i}本目 {n}字超過")
+        if "*" in p:
+            issues.append(f"{i}本目 アスタリスク")
+        if PAGE_LABEL.search(p):
+            issues.append(f"{i}本目 ページラベル")
+    return issues
 
 
-def _persona_context() -> str:
+def generate_thread(kata: dict, transcript: str, title: str):
+    client = _client()
     persona = read_text_file(PERSONA_PATH)
-    return f"\n\n【キャラクター設定（口調・人称・語尾はこれに従う）】\n{persona}" if persona.strip() else ""
-
-
-def generate_draft(slot_cfg: dict, recents: list[str]) -> dict:
-    """1本の下書きを生成。{'body','cta','text'} を返す。"""
-    client = _client()
-    recent_block = "\n---\n".join(recents) if recents else "（まだありません）"
+    common = read_text_file(COMMON_PATH)
     cta_ref = read_text_file(CTA_REF_PATH)
+    note = _note_link()
+    lo, hi = thread_range(kata["thread_range"])
 
     system = (
-        "あなたは20〜30代女性向けの恋愛（男性心理・愛され・溺愛系）ジャンルのThreads投稿を書くプロの編集者です。"
-        + _persona_context()
-        + "\n\n【厳守ルール】"
-        "\n- 本文は必ず「共感 → 痛み → 視点転換 → 実践Tips」の4段構成にする。"
-        "\n- 最後に、本文内容に合ったCTA（プロフィール誘導など）を1つ付ける。"
-        "\n- 全体（本文＋CTA）で500文字以内（日本語の文字数）。"
-        "\n- アスタリスク（*）やページラベル（[1/3]等）は使わない。強調は「」を使う。"
-        "\n- 断定的な誇大表現・性的表現・特定個人や性別を貶める表現は禁止。"
-        "\n- 直近の投稿と内容・言い回しが重複しないようにする。"
-        "\n\n【文字数の予算（厳守）】本文は約320〜400字、CTAは約80〜120字、合計は必ず500字以内。"
-        "CTAは長い箇条書きにせず2〜4行に収める。"
-        "\n\n【出力形式】JSONやコードブロックは使わない。次の形式そのままで出力する（前置き・見出し・説明を付けない）:"
-        "\n本文をそのまま書く（改行そのままでOK）"
-        f"\n{CTA_DELIM}"
-        "\nCTA文をそのまま書く"
+        "あなたは Threads アカウント @mirei_fondly「みれい」の中の人です。"
+        "YouTube動画の書き起こしを素材に、下記の『型』の構造で連投（スレッド）を作ります。"
+        "\n\n【キャラクター設定（声・口調・人称・語尾はこれに従う）】\n" + persona +
+        "\n\n【共通ルール（出力形式・禁止事項）】\n" + common +
+        "\n\n【今回使う型（この構造・機能に従う。フレーズは真似ない）】\n" + kata["prompt"] +
+        "\n\n【厳守】"
+        f"\n- 連投は {lo}〜{hi} 投稿。素材の論点数に応じて本数を決める。"
+        "\n- 内容は素材（書き起こし）から取る。型からは構造だけ。素材の言い回しをそのまま使わない。"
+        "\n- 各投稿は500文字以内（日本語の文字数）。アスタリスク（*）やページラベル（[1/3]等）は使わない。"
+        "\n- 最終投稿は、本文の流れから自然につながるCTA（プロフィールのリンク誘導）を みれい の声で新規に書く。"
+        + (f"\n  誘導先の参考: プロフィールのリンク（note: {note}）。URLは本文に貼らずプロフ誘導でよい。" if note else "") +
+        "\n\n【CTAの参考例（丸写し禁止・構成と機能だけ参考）】\n" + cta_ref[:1200] +
+        f"\n\n【出力形式】各投稿を『{POST_DELIM}』の行で区切って順番に出力する。JSONやコードブロック・説明文・見出し番号は付けない。"
     )
     user = (
-        f"【今回の枠のテーマ】{slot_cfg.get('theme','')}\n"
-        f"【トーン】{slot_cfg.get('tone','')}\n\n"
-        f"【CTAの参考例（丸写し禁止・構成と誘導の“機能”だけ参考。長さは真似ず短めに）】\n{cta_ref[:1200]}\n\n"
-        f"【直近30投稿（重複回避のため。これらと似せない）】\n{recent_block}\n\n"
-        f"上記を踏まえ、新しい投稿を1本、本文→{CTA_DELIM}→CTA の形式で、合計500字以内で出力してください。"
+        f"【素材：YouTube動画『{title}』の書き起こし】\n{transcript[:6000]}\n\n"
+        f"この素材の内容だけを使い、上の型に従って {lo}〜{hi} 投稿の連投を作成してください。"
+        f"各投稿を『{POST_DELIM}』で区切って出力。"
     )
     resp = client.messages.create(
-        model=MODEL, max_tokens=2000, system=system,
+        model=MODEL, max_tokens=4000, system=system,
         messages=[{"role": "user", "content": user}])
     text = "".join(b.text for b in resp.content if b.type == "text")
-    body, cta = _split_body_cta(text)
-    # 500字超過なら意味・構成・CTAを保ったまま自動圧縮（再生成より安く確実）
-    if cta and tc.count_length(compose_text(body, cta)) > tc.MAX_LENGTH:
-        body, cta = _shorten(client, body, cta)
-    return {"body": body, "cta": cta, "text": compose_text(body, cta)}
+    return _split_posts(text)
 
 
-def _shorten(client, body: str, cta: str) -> tuple[str, str]:
-    """全体が500字を超えたとき、意味・4段構成・CTAを保ったまま縮める。"""
-    system = (
-        "次のThreads投稿を、意味・語り口・4段構成（共感→痛み→視点転換→実践Tips）・CTAの機能を保ったまま、"
-        "全体で日本語460字以内に縮めてください。"
-        "\nアスタリスクやページラベルは使わない。"
-        f"\n出力は本文→{CTA_DELIM}→CTA の形式のみ（説明を付けない）。"
-    )
-    resp = client.messages.create(
-        model=MODEL, max_tokens=1500, system=system,
-        messages=[{"role": "user", "content": compose_text(body, cta)}])
-    text = "".join(b.text for b in resp.content if b.type == "text")
-    nb, nc = _split_body_cta(text)
-    return (nb, nc) if nc else (body, cta)
-
-
-def score_draft(draft_text: str, slot_cfg: dict, recents: list[str]) -> tuple[int, dict]:
-    """別のClaude呼び出しで0-100点を付ける。"""
-    client = _client()
-    recent_block = "\n---\n".join(recents) if recents else "（まだありません）"
-    system = (
-        "あなたはThreads投稿の品質評価者です。次の観点で総合点を0-100の整数で付けてください。"
-        "\n1. トーン一致度（指定テーマ・トーンに合っているか）"
-        "\n2. 4段構成（共感→痛み→視点転換→実践Tips）が成立しているか"
-        "\n3. 直近30投稿との類似度（似ているほど減点）"
-        "\n\n【採点基準（アンカー）】"
-        "\n- 90〜100: 秀逸。"
-        "\n- 80〜89: そのまま投稿してよい水準。テーマ・トーンに合い、4段構成が成立し、直近と重複が無ければここ。"
-        "  絵文字や語尾の好み・些細な表現は減点対象にしない。"
-        "\n- 70〜79: 惜しい。トーンずれ・構成の欠け・既視感など気になる点が明確にある。"
-        "\n- 〜69: トーン不一致・構成崩壊・重複が濃いなど明確な問題。"
-        "\n重大な欠点が無ければ80以上を付けること。"
-        "\n\n【出力形式】1行目に点数の数字だけ（例: 85）。2行目に短い理由。JSONは使わない。"
-    )
-    user = (
-        f"【テーマ】{slot_cfg.get('theme','')}\n【トーン】{slot_cfg.get('tone','')}\n\n"
-        f"【評価対象の投稿】\n{draft_text}\n\n"
-        f"【直近30投稿】\n{recent_block}\n\n"
-        "採点してください（1行目に数字、2行目に理由）。"
-    )
-    resp = client.messages.create(
-        model=MODEL, max_tokens=300, system=system,
-        messages=[{"role": "user", "content": user}])
-    text = "".join(b.text for b in resp.content if b.type == "text")
-    score, reason = _extract_score(text)
-    return score, {"reason": reason, "raw": text[:120]}
-
-
-# ---------------------------------------------------------------------------
-# フォールバック（定型投稿）
-# ---------------------------------------------------------------------------
-def pick_evergreen():
-    data = load_json(EVERGREEN_PATH, {"posts": []})
-    posts = data.get("posts", []) if isinstance(data, dict) else data
-    for p in posts:
-        if not p.get("used"):
-            p["used"] = True
-            save_json(EVERGREEN_PATH, {"posts": posts} if isinstance(data, dict) else posts)
-            return p
-    return None
-
-
-# ---------------------------------------------------------------------------
-# 1枠分の下書きを確定
-# ---------------------------------------------------------------------------
-def produce_for_slot(slot_cfg: dict, recents: list[str], ng_words: list[str]):
-    """(draft_dict, source) を返す。source: 'ai' / 'evergreen' / None(失敗)"""
+def produce_thread(kata: dict, transcript: str, title: str):
+    """検証を通る連投を作る。最大MAX_REGEN回。返り値: posts or None"""
+    lo, _hi = thread_range(kata["thread_range"])
     for attempt in range(1, MAX_REGEN + 1):
         try:
-            draft = generate_draft(slot_cfg, recents)
+            posts = generate_thread(kata, transcript, title)
         except Exception as e:  # noqa: BLE001
             log(f"  [gen] {attempt}/{MAX_REGEN} 生成エラー: {e}")
             continue
-        ok, reasons = machine_check(draft["body"], draft["cta"], ng_words)
-        if not ok:
-            log(f"  [gen] {attempt}/{MAX_REGEN} 機械チェックNG: {reasons}")
+        if len(posts) < max(2, lo - 1):
+            log(f"  [gen] {attempt}/{MAX_REGEN} 投稿数不足（{len(posts)}本）")
             continue
-        try:
-            score, detail = score_draft(draft["text"], slot_cfg, recents)
-        except Exception as e:  # noqa: BLE001
-            log(f"  [gen] {attempt}/{MAX_REGEN} 採点エラー: {e}")
+        issues = validate_posts(posts)
+        if issues:
+            log(f"  [gen] {attempt}/{MAX_REGEN} 検証NG: {issues[:3]}")
             continue
-        log(f"  [gen] {attempt}/{MAX_REGEN} 採点={score}（{detail.get('reason','')[:40]}）")
-        if score >= PASS_SCORE:
-            draft["score"] = score
-            return draft, "ai"
-
-    # 3回落ちた → evergreen
-    ev = pick_evergreen()
-    if ev:
-        log("  [gen] 3回不合格。evergreen定型投稿を使用")
-        return {"body": ev.get("text", ""), "cta": "", "text": ev.get("text", ""),
-                "evergreen_id": ev.get("id")}, "evergreen"
-    return None, None
-
-
-# ---------------------------------------------------------------------------
-# 監視: トークン期限
-# ---------------------------------------------------------------------------
-def check_token_expiry():
-    meta = load_json(TOKEN_META_PATH, None)
-    if not meta or not meta.get("expires_at"):
-        tc.summary_section("トークン期限", "token_meta.json が無いため期限を確認できません（refresh実行後に生成されます）。")
-        return
-    try:
-        exp = tc.parse_scheduled(meta["expires_at"])
-    except Exception:
-        return
-    days = (exp - tc.now_jst()).days
-    if days < 30:
-        tc.warn("トークン期限が近い", f"アクセストークンの残り約{days}日（{exp.date()}）。refresh_token を確認してください。")
-    else:
-        tc.summary_section("トークン期限", f"残り約{days}日（{exp.date()}）。")
+        log(f"  [gen] {attempt}/{MAX_REGEN} OK（{len(posts)}本連投）")
+        return posts
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -315,73 +269,89 @@ def check_token_expiry():
 # ---------------------------------------------------------------------------
 def process(dry_run: bool):
     queue = load_json(QUEUE_PATH, [])
-    ng_words = load_ng_words()
+    used_videos = set(load_json(USED_VIDEOS_PATH, []))
     todo = needed_slots(queue)
+    katas = load_katas()
 
-    log(f"在庫目標={SLOTS_PER_DAY_TARGET}本 / 不足={len(todo)}枠 / dry_run={dry_run} / model={MODEL}")
+    log(f"在庫目標={SLOTS_PER_DAY_TARGET}枠 / 不足={len(todo)}枠 / 型数={len(katas)} / dry_run={dry_run}")
 
     if not todo:
         tc.summary_section("下書き生成", "在庫は充足しています（生成なし）。")
-        check_token_expiry()
+        return
+    if not katas:
+        tc.warn("型が無い", "kata-library に型がありません。/kata-register で登録してください。")
         return
 
     if dry_run:
         lines = "\n".join(f"- {slots.slot_key(dt)}: {s.get('theme','')}" for dt, s in todo)
         tc.summary_section("下書き生成（ドライラン）", f"埋めるべき枠 {len(todo)}件:\n{lines}")
-        log("[DRY RUN] Claudeは呼びません。上記の枠を生成対象として表示のみ")
-        check_token_expiry()
+        log("[DRY RUN] YouTube/Claudeは呼びません。対象枠の表示のみ")
         return
 
-    recents = recent_texts(queue)
-    generated = evergreen = failed = 0
+    pool = build_video_pool(len(todo), used_videos)
+    log(f"素材プール: {len(pool)}本の候補動画")
 
+    made = failed = 0
+    pool_i = 0
     for dt, scfg in todo:
         key = slots.slot_key(dt)
-        log(f"[slot] {key} テーマ={scfg.get('theme','')}")
-        draft, source = produce_for_slot(scfg, recents, ng_words)
-        if source is None:
+        slot_date = key.split(" ")[0]
+        kata = choose_kata(katas, queue, slot_date)
+
+        # 素材を確保（字幕が取れる動画に当たるまでプールを進める）
+        transcript = title = video_id = None
+        while pool_i < len(pool):
+            cand = pool[pool_i]
+            pool_i += 1
+            t = yt.get_transcript_text(cand["id"])
+            if t and len(t) > 200:
+                transcript, title, video_id = t, cand["title"], cand["id"]
+                break
+        if not transcript:
             failed += 1
-            tc.warn("生成失敗（evergreen枯渇）", f"枠 `{key}` の下書きを用意できませんでした。fallback/evergreen.json を補充してください。")
+            tc.warn("素材切れ", f"枠 `{key}`: 字幕の取れる未使用動画がありませんでした。")
             continue
-        item = {
+
+        log(f"[slot] {key} 型={kata['slug']} 素材=『{title[:30]}』")
+        posts = produce_thread(kata, transcript, title)
+        if not posts:
+            failed += 1
+            tc.warn("生成失敗", f"枠 `{key}`（型 {kata['slug']}）で検証を通る連投を作れませんでした。")
+            continue
+
+        queue.append({
             "id": f"gen-{key.replace(' ', 'T').replace(':', '')}",
             "slot_key": key,
             "slot_time": scfg.get("time"),
-            "theme": scfg.get("theme"),
-            "tone": scfg.get("tone"),
-            "source": source,
-            "text": draft["text"],
-            "body": draft.get("body", ""),
-            "cta": draft.get("cta", ""),
-            "score": draft.get("score"),
+            "kata": kata["slug"],
+            "source_video": video_id,
+            "source_title": title,
+            "posts": posts,
             "status": "pending",
-            "posted_id": None,
+            "posted_ids": [],
             "error": None,
             "created_at": tc.now_jst().isoformat(),
-        }
-        queue.append(item)
-        recents.insert(0, draft["text"])  # 次の生成で重複回避に反映
-        save_json(QUEUE_PATH, queue)      # 都度flush
-        if source == "ai":
-            generated += 1
-        else:
-            evergreen += 1
+        })
+        used_videos.add(video_id)
+        save_json(QUEUE_PATH, queue)
+        save_json(USED_VIDEOS_PATH, sorted(used_videos))
+        made += 1
 
-    tc.summary_section(
-        "下書き生成 結果",
-        f"- AI合格: {generated}\n- evergreen使用: {evergreen}\n- 失敗: {failed}\n- 対象枠: {len(todo)}")
-
-    if generated == 0 and todo:
-        tc.warn("生成全滅", f"今回 {len(todo)} 枠すべてでAI生成が合格しませんでした（evergreen {evergreen} / 失敗 {failed}）。")
-
-    check_token_expiry()
+    tc.summary_section("下書き生成 結果",
+                       f"- 生成: {made}連投\n- 失敗: {failed}\n- 対象枠: {len(todo)}")
+    if made == 0 and todo:
+        tc.warn("生成全滅", f"今回 {len(todo)} 枠すべてで連投を作れませんでした。")
 
 
 def main():
-    ap = argparse.ArgumentParser(description="下書き自動生成（Claude）")
-    ap.add_argument("--dry-run", action="store_true", help="Claudeを呼ばず不足枠のみ表示")
+    ap = argparse.ArgumentParser(description="下書き自動生成（kata-write自動化）")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--limit", type=int, default=None, help="生成する枠数の上限（テスト用）")
     args = ap.parse_args()
     env_dry = str(tc.env("DRY_RUN", "false")).strip().lower() in ("1", "true", "yes")
+    if args.limit is not None:
+        global SLOTS_PER_DAY_TARGET
+        SLOTS_PER_DAY_TARGET = args.limit
     process(dry_run=args.dry_run or env_dry)
 
 
