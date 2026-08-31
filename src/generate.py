@@ -189,9 +189,14 @@ def _note_link() -> str:
     return m.group(1) if m else ""
 
 
+def _clean_post(p: str) -> str:
+    """本文に紛れ込んだコードフェンス（```）行や区切りの残骸を除去する。"""
+    lines = [ln for ln in p.splitlines() if not ln.strip().startswith("```")]
+    return "\n".join(lines).strip()
+
+
 def _split_posts(text: str) -> list[str]:
-    text = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", (text or "").strip()).strip()
-    parts = [p.strip() for p in text.split(POST_DELIM)]
+    parts = [_clean_post(p) for p in (text or "").strip().split(POST_DELIM)]
     return [p for p in parts if p]
 
 
