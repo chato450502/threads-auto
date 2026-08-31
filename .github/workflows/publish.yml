@@ -2,7 +2,10 @@ name: Publish Threads Posts
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # 15分おき（UTC基準。cronはUTCで動く点に注意）
+    # 投稿枠(JST 9/15/21時 = UTC 0/6/12時)の前後2時間だけ15分間隔で実行。
+    # 常時15分おきだとGitHub Actions無料枠(private 月2000分)を超えるための調整。
+    # 枠時刻を変えたら config/slots.json とこの cron の両方を合わせること。
+    - cron: "*/15 0-1,6-7,12-13 * * *"
   workflow_dispatch:
     inputs:
       dry_run:

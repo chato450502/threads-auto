@@ -44,6 +44,7 @@ PERSONA_PATH = tc.ROOT / "assets" / "persona.md"
 CTA_REF_PATH = tc.ROOT / "assets" / "cta.md"
 COMMON_PATH = KATA_DIR / "_common-modules.md"
 CLAUDE_MD = tc.ROOT / "CLAUDE.md"
+ACCOUNT_PATH = tc.ROOT / "config" / "account.json"
 
 PAGE_LABEL = re.compile(r"\[\s*\d+\s*/\s*\d+\s*\]")
 
@@ -183,10 +184,15 @@ def _client():
     return anthropic.Anthropic()
 
 
-def _note_link() -> str:
-    md = read_text_file(CLAUDE_MD)
-    m = re.search(r"リンク誘導先（note）\*\*:\s*(\S+)", md)
-    return m.group(1) if m else ""
+def load_account() -> dict:
+    """アカウント固有の値（ハンドル・表示名・ジャンル・note誘導先）を config/account.json から読む。"""
+    acc = load_json(ACCOUNT_PATH, {}) or {}
+    if not acc.get("note_link"):  # 後方互換: 旧CLAUDE.mdからの拾い上げ
+        md = read_text_file(CLAUDE_MD)
+        m = re.search(r"リンク誘導先（note）\*\*:\s*(\S+)", md)
+        if m:
+            acc["note_link"] = m.group(1)
+    return acc
 
 
 def _clean_post(p: str) -> str:
@@ -218,12 +224,17 @@ def generate_thread(kata: dict, transcript: str, title: str):
     persona = read_text_file(PERSONA_PATH)
     common = read_text_file(COMMON_PATH)
     cta_ref = read_text_file(CTA_REF_PATH)
-    note = _note_link()
+    acc = load_account()
+    note = acc.get("note_link", "")
+    handle = acc.get("handle", "")
+    name = acc.get("display_name", "") or "このアカウント"
+    genre = acc.get("genre", "")
     lo, hi = thread_range(kata["thread_range"])
 
     system = (
-        "あなたは Threads アカウント @mirei_fondly「みれい」の中の人です。"
-        "YouTube動画の書き起こしを素材に、下記の『型』の構造で連投（スレッド）を作ります。"
+        f"あなたは Threads アカウント {handle}「{name}」の中の人です。"
+        + (f"発信ジャンルは「{genre}」。" if genre else "")
+        + "YouTube動画の書き起こしを素材に、下記の『型』の構造で連投（スレッド）を作ります。"
         "\n\n【キャラクター設定（声・口調・人称・語尾はこれに従う）】\n" + persona +
         "\n\n【共通ルール（出力形式・禁止事項）】\n" + common +
         "\n\n【今回使う型（この構造・機能に従う。フレーズは真似ない）】\n" + kata["prompt"] +
@@ -231,7 +242,7 @@ def generate_thread(kata: dict, transcript: str, title: str):
         f"\n- 連投は {lo}〜{hi} 投稿。素材の論点数に応じて本数を決める。"
         "\n- 内容は素材（書き起こし）から取る。型からは構造だけ。素材の言い回しをそのまま使わない。"
         "\n- 各投稿は500文字以内（日本語の文字数）。アスタリスク（*）やページラベル（[1/3]等）は使わない。"
-        "\n- 最終投稿は、本文の流れから自然につながるCTA（プロフィールのリンク誘導）を みれい の声で新規に書く。"
+        f"\n- 最終投稿は、本文の流れから自然につながるCTA（プロフィールのリンク誘導）を {name} の声で新規に書く。"
         + (f"\n  誘導先の参考: プロフィールのリンク（note: {note}）。URLは本文に貼らずプロフ誘導でよい。" if note else "") +
         "\n\n【CTAの参考例（丸写し禁止・構成と機能だけ参考）】\n" + cta_ref[:1200] +
         f"\n\n【出力形式】各投稿を『{POST_DELIM}』の行で区切って順番に出力する。JSONやコードブロック・説明文・見出し番号は付けない。"
