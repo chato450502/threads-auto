@@ -26,9 +26,11 @@ import slots
 import threads_common as tc
 from threads_common import log
 
-WAIT_SECONDS = int(tc.env("POST_WAIT_SECONDS", "30"))
-BETWEEN_POSTS = int(tc.env("BETWEEN_POSTS_SECONDS", "3"))
+WAIT_SECONDS = int(tc.env("POST_WAIT_SECONDS", "15"))
+# 返信を繋ぐ前に親投稿が反映されるのを待つ間隔（短すぎると 500 になる）
+BETWEEN_POSTS = int(tc.env("BETWEEN_POSTS_SECONDS", "25"))
 RETRY_TRIES = 3
+MAX_THREAD_ATTEMPTS = int(tc.env("MAX_THREAD_ATTEMPTS", "4"))
 CATCHUP_MINUTES = int(tc.env("CATCHUP_MINUTES", "360"))
 GRAPH_API_BASE = tc.env("GRAPH_API_BASE", "https://graph.threads.net/v1.0")
 
@@ -114,7 +116,7 @@ def with_retry(fn, label: str, tries: int = RETRY_TRIES):
             last = e
             log(f"[retry] {label} 失敗 {attempt}/{tries}: {e}")
             if attempt < tries:
-                time.sleep(5 * attempt)
+                time.sleep(10 * attempt)
     raise last
 
 
@@ -181,9 +183,10 @@ def process(dry_run: bool, now_override: str | None):
         # 再開: 既に投稿済みの本数を引き継ぐ
         posted_ids = list(st.get("posted_ids", item.get("posted_ids") or []))
         reply_to = posted_ids[-1] if posted_ids else None
+        attempts = st.get("attempts", 0)
         item["status"] = "in_progress"
         state["slots"][key] = {"status": "in_progress", "post_id": item.get("id"),
-                               "posted_ids": posted_ids}
+                               "posted_ids": posted_ids, "attempts": attempts}
         log(f"[posting] 枠 {key}（連投{len(posts)}本 / 済{len(posted_ids)}本）型={item.get('kata','')}")
 
         try:
@@ -198,13 +201,27 @@ def process(dry_run: bool, now_override: str | None):
                 if i + 1 < len(posts) and not dry_run:
                     time.sleep(BETWEEN_POSTS)
         except Exception as e:  # noqa: BLE001
-            item["status"] = "failed"
-            item["error"] = f"連投{len(posted_ids)}/{len(posts)}本で失敗: {e}"
-            state["slots"][key] = {"status": "failed", "post_id": item.get("id"),
-                                   "posted_ids": posted_ids, "error": item["error"]}
-            failed += 1
-            persist()
-            tc.warn("投稿失敗（API）", f"枠 `{key}`: {item['error']}")
+            attempts += 1
+            msg = f"連投{len(posted_ids)}/{len(posts)}本で中断: {e}"
+            if attempts < MAX_THREAD_ATTEMPTS:
+                # 途中失敗 → in_progress のまま残し、次回実行で続きから自動再開
+                item["status"] = "in_progress"
+                item["error"] = msg
+                state["slots"][key] = {"status": "in_progress", "post_id": item.get("id"),
+                                       "posted_ids": posted_ids, "attempts": attempts,
+                                       "error": msg}
+                persist()
+                tc.warn("連投を中断（次回に続きから再開）",
+                        f"枠 `{key}`: {msg}（試行{attempts}/{MAX_THREAD_ATTEMPTS}）")
+            else:
+                item["status"] = "failed"
+                item["error"] = msg
+                state["slots"][key] = {"status": "failed", "post_id": item.get("id"),
+                                       "posted_ids": posted_ids, "attempts": attempts,
+                                       "error": msg}
+                failed += 1
+                persist()
+                tc.warn("投稿失敗（連投・再試行上限）", f"枠 `{key}`: {msg}")
             continue
 
         item["status"] = "posted"
