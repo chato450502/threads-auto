@@ -98,7 +98,8 @@ def create_container(user_id: str, token: str, text: str, reply_to_id: str | Non
     url = f"{GRAPH_API_BASE}/{user_id}/threads"
     params = {"media_type": "TEXT", "text": text, "access_token": token}
     if reply_to_id:
-        params["reply_to_id"] = reply_to_id
+        # Threads APIの返信パラメータは replied_to_id（reply_to_id は500になる）
+        params["replied_to_id"] = reply_to_id
     return _post(url, params)["id"]
 
 
