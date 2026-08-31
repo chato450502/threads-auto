@@ -2,6 +2,14 @@
   "slots": {
     "2026-08-31 09:00": {
       "status": "missing"
+    },
+    "2026-08-31 15:00": {
+      "status": "failed",
+      "post_id": "gen-2026-08-31T1500",
+      "posted_ids": [
+        "17944805454292633"
+      ],
+      "error": "連投1/4本で失敗: HTTP 500: {\"error\":{\"code\":1,\"message\":\"An unknown error occurred\"}}"
     }
   }
 }
