@@ -106,6 +106,8 @@ def load_katas() -> list[dict]:
             continue
         text = p.read_text(encoding="utf-8")
         fm, body = _parse_frontmatter(text)
+        if str(fm.get("active", "true")).strip().lower() == "false":
+            continue  # 引退した型は生成に使わない
         out.append({
             "slug": fm.get("name", p.stem),
             "category": fm.get("category", ""),

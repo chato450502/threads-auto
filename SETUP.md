@@ -95,10 +95,11 @@ Threadsに自動投稿するには、Meta（Threadsの運営会社）で「ア�
 
 1. [developers.facebook.com/apps](https://developers.facebook.com/apps) を開いてログイン
 2. **「アプリを作成」** → ユースケースで **「Threads」** を選んで作成
-3. 権限（アクセス許可）に、次の**3つ**を追加する：
+3. 権限（アクセス許可）に、次の**4つ**を追加する：
    - `threads_basic`
    - `threads_content_publish`
    - **`threads_manage_replies`** ← ⚠️**これが無いと連投（返信でつなぐ）が失敗します。必ず追加**
+   - **`threads_manage_insights`** ← 週1の「型の自動入れ替え」で投稿の成績を読むのに必要
 4. **「アプリの設定 → ベーシック」** の画面で、次の2つを控える（後で使う）：
    - **アプリID**（数字）
    - **app secret**（「表示」ボタンを押すと見える文字列）
@@ -148,6 +149,7 @@ Threadsに自動投稿するには、Meta（Threadsの運営会社）で「ア�
 | `ANTHROPIC_API_KEY` | Anthropicのキー |
 | `YOUTUBE_API_KEY` | YouTubeのキー |
 | `GH_PAT` | GitHubのトークン（github_pat_...） |
+| `APIFY_TOKEN` | Apifyのトークン（週1の型リサーチ用。[apify.com](https://apify.com/) で無料登録→Settings→APIから取得） |
 | `NOTIFY_WEBHOOK_URL` | （任意）Discord/SlackのWebhook。なければ登録しなくてOK |
 
 > ⚠️ `THREADS_ACCESS_TOKEN` と `THREADS_USER_ID` は、次のステップ6で**自動的に入ります**。
@@ -218,6 +220,14 @@ Threadsに自動投稿するには、Meta（Threadsの運営会社）で「ア�
 - **9時・15時・21時**：貯めた連投を1つずつ投稿
 
 してくれます。**あなたは何もしなくてOK**です。
+
+さらに **毎週月曜の早朝**、システムが自分の投稿の成績（表示回数・いいね）を測り、
+**伸びていない「型」を引退させ、新しくリサーチした型と自動で入れ替え**ます
+（急に総入れ替えしないよう、データが十分たまった型だけを1週1つずつ、慎重に）。
+これも全部自動なので、放っておくほど良い型に最適化されていきます。
+
+> ⚠️ この「型の入れ替え」を使うには、ステップ3で `threads_manage_insights` 権限を、
+> ステップ5で `APIFY_TOKEN` を登録しておく必要があります（未登録なら投稿は動きますが入れ替えは行われません）。
 
 ---
 

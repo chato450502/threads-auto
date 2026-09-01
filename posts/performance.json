@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-09-01T23:16:27.995743+09:00",
+  "per_kata": {
+    "contrast-hook-mechanism": {
+      "samples": [
+        {
+          "slot_key": "2026-08-31 15:00",
+          "root_id": "18107461415596270",
+          "views": 485,
+          "likes": 1,
+          "replies": 3,
+          "reposts": 0
+        }
+      ],
+      "post_count": 1,
+      "avg_views": 485.0,
+      "avg_likes": 1.0,
+      "total_views": 485
+    },
+    "declarative-bullet-summary": {
+      "samples": [
+        {
+          "slot_key": "2026-08-31 21:00",
+          "root_id": "18204049273371938",
+          "views": 8520,
+          "likes": 79,
+          "replies": 1,
+          "reposts": 2
+        }
+      ],
+      "post_count": 1,
+      "avg_views": 8520.0,
+      "avg_likes": 79.0,
+      "total_views": 8520
+    },
+    "gap-list-comparison": {
+      "samples": [
+        {
+          "slot_key": "2026-09-01 09:00",
+          "root_id": "17902052988560871",
+          "views": 1327,
+          "likes": 1,
+          "replies": 1,
+          "reposts": 0
+        }
+      ],
+      "post_count": 1,
+      "avg_views": 1327.0,
+      "avg_likes": 1.0,
+      "total_views": 1327
+    },
+    "reframe-pair-list": {
+      "samples": [
+        {
+          "slot_key": "2026-09-01 15:00",
+          "root_id": "18190008166393820",
+          "views": 946,
+          "likes": 1,
+          "replies": 1,
+          "reposts": 0
+        }
+      ],
+      "post_count": 1,
+      "avg_views": 946.0,
+      "avg_likes": 1.0,
+      "total_views": 946
+    },
+    "title-subtitle-education": {
+      "samples": [
+        {
+          "slot_key": "2026-09-01 21:00",
+          "root_id": "18108926903142580",
+          "views": 5835,
+          "likes": 7,
+          "replies": 7,
+          "reposts": 0
+        }
+      ],
+      "post_count": 1,
+      "avg_views": 5835.0,
+      "avg_likes": 7.0,
+      "total_views": 5835
+    }
+  }
+}

@@ -28,7 +28,7 @@ AUTH_BASE = "https://threads.net/oauth/authorize"
 TOKEN_EXCHANGE = "https://graph.threads.net/oauth/access_token"
 LONG_LIVED = "https://graph.threads.net/access_token"
 GRAPH = "https://graph.threads.net/v1.0"
-SCOPES = "threads_basic,threads_content_publish,threads_manage_replies"
+SCOPES = "threads_basic,threads_content_publish,threads_manage_replies,threads_manage_insights"
 
 
 def cmd_url(_args):

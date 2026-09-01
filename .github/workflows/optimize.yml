@@ -1,0 +1,47 @@
+name: 3. 型の最適化（週1・成績で入れ替え）
+
+# 毎週、自分の投稿の成績を測り、伸びていない型を引退させて
+# 新しくリサーチした型と入れ替える（1-in-1-out）。ガードレールつき。
+
+on:
+  schedule:
+    - cron: "0 17 * * 0"   # 毎週月曜 JST 2:00（= 日曜 17:00 UTC）。当日の生成(3:00)前に反映
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: threads-optimize
+  cancel-in-progress: false
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: 成績測定＋型の入れ替え
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          GRAPH_API_BASE: "https://graph.threads.net/v1.0"
+          GENERATE_MODEL: "claude-sonnet-4-6"
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+        run: python src/optimize.py
+      - name: 変更をコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add kata-library/ posts/performance.json
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "chore: 型の最適化（成績測定・入れ替え）[skip ci]"
+            git push
+          fi
