@@ -78,8 +78,13 @@
 
 ## ステップ2：テンプレから「自分のコピー」を作る
 
-1. 配布された **テンプレのURL** を開く（例: `https://github.com/＜配布元＞/threads-auto`）
-2. 緑色の **「Use this template」→「Create a new repository」** をクリック
+1. 下の **テンプレのURL** を開く（GitHubにログインした状態で）
+
+   **https://github.com/chato450502/threads-auto/generate**
+
+   （うまく開けないときは https://github.com/chato450502/threads-auto を開き、
+   緑色の **「Use this template」** ボタンからでもOK）
+2. **「Create a new repository」** の画面が出たら進む
 3. **Repository name**：好きな名前（例 `my-threads`）
 4. **Private** を選ぶ（⚠️ 公開にしない）
 5. **「Create repository」** をクリック
