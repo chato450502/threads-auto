@@ -1,0 +1,46 @@
+name: 1. Threadsトークン取得（パソコン不要）
+
+# GitHubの画面のボタンだけでThreadsトークンを取得・保存する。
+# 1回目: mode=url で実行 → 実行結果ページに認可URLが出る → ブラウザで許可 → code取得
+# 2回目: mode=exchange・codeに貼って実行 → トークンをSecretsに自動保存
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "url=認可URLを表示 / exchange=コードを保存"
+        type: choice
+        options: [url, exchange]
+        default: url
+      code:
+        description: "exchangeのとき: localhost/?code= の後ろ〜#の前 を貼る"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  token:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: 認可URL表示 または トークン保存
+        env:
+          THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
+          THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+          THREADS_REDIRECT_URI: ${{ secrets.THREADS_REDIRECT_URI }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          MODE: ${{ inputs.mode }}
+          CODE: ${{ inputs.code }}
+        run: |
+          if [ "$MODE" = "url" ]; then
+            python src/get_token.py url
+          else
+            python src/get_token.py exchange --code "$CODE" --save-secrets
+          fi

@@ -1,154 +1,256 @@
-# セットアップ手順（新しいアカウントで使い始める人向け）
+# はじめての方へ — 完全セットアップガイド（省略なし）
 
-このリポジトリは、Threadsに **AIが型＋YouTube素材から連投を自動生成し、1日3枠で自動投稿**する
-システムです。この手順どおりに進めれば、あなた自身のアカウント・あなた自身のAPIキーで、
-独立して動かせます。
+このシステムは、**あなたのThreadsアカウントに、毎日自動で投稿してくれる仕組み**です。
+パソコンやプログラミングの知識がなくても、この通りに進めれば使えます。
+**パソコンにコマンドを打つ作業は一切ありません。すべてWebサイトのボタン操作だけ**で完結します。
 
-> 所要：慣れた人で30〜60分。一番の難所は「Threadsのトークン取得」です。
-
----
-
-## 0. 用意するもの
-
-- **GitHubアカウント**（無料）
-- **投稿するThreadsアカウント**（＝あなたの運用アカウント）
-- 3つのAPIキー：Threads（Meta）／Anthropic（Claude）／YouTube Data API
-- パソコンで少しだけコマンドを打てる環境（トークン取得の1回だけ）
+読みながら1つずつ進めてください。所要時間はだいたい1時間ほどです。
 
 ---
 
-## 1. テンプレから自分のリポジトリを作る
+## 0. まず「仕組み」を理解する（ここ大事）
 
-1. このリポジトリのページ右上 **「Use this template」→「Create a new repository」**
-2. **Private** を選び、好きな名前で作成
-3. できた自分のリポジトリを、パソコンに `git clone` する（またはCodespaces等）
+### これは何をするもの？
+- AIが「型（バズる文章の骨組み）」とYouTube動画の内容をもとに、**Threadsの文章を自動で作ります**。
+- そして **毎日 朝9時・昼15時・夜21時 に、あなたのThreadsへ自動で投稿**します（連投＝スレッド形式）。
 
----
+### なぜ「GitHub」が必要なの？
+プログラムは、どこかで「動かし続ける場所」が必要です。あなたのパソコンでやると、
+パソコンを閉じたら止まってしまいます。
 
-## 2. Python環境を用意（トークン取得と初期化に使う）
+そこで **GitHub（ギットハブ）** を使います。GitHubは、
+- プログラムを**置いておく場所**（＝あなた専用のフォルダをクラウドに持てる）
+- 決まった時刻にプログラムを**自動で動かしてくれるタイマー**
+- APIキーなどの秘密を**安全に保管する金庫**
 
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env    # 後でこの .env に値を入れる
+これらを**無料**で提供してくれるサービスです。つまりGitHubが、あなたの代わりに
+「クラウド上の作業員」として、決まった時刻に投稿を実行してくれます。
+だから**あなたのパソコンは閉じていてOK**。寝ていても投稿されます。
+
+### 図でイメージ
+```
+   GitHub（クラウド）＝あなたの代わりに働く作業員
+   ├─ プログラム一式（文章を作る・投稿する）
+   ├─ タイマー：毎日3時=下書き作成 / 9・15・21時=投稿
+   └─ 金庫（Secrets）：APIキーを安全に保管
+        ↓ 決まった時刻に自動実行
+   あなたのThreadsアカウントに投稿される
 ```
 
+### 登場する「鍵（キー）」の意味
+このシステムは、外部のサービスを使うために「鍵」がいくつか要ります。難しく考えず、
+「〇〇を使うための許可証」と思ってください。
+
+| 鍵 | 何のため |
+|---|---|
+| **Threadsトークン** | あなたのThreadsに「投稿していいよ」という許可証 |
+| **Anthropicキー** | 文章を書くAI（Claude）を使う鍵 |
+| **YouTubeキー** | 素材にする動画を探す鍵 |
+| **GH_PAT** | GitHubが自分の金庫を更新するための鍵（トークンの自動更新に使う） |
+
 ---
 
-## 3. Threadsのトークンを取得（最重要・つまずきポイント）
+## 全体の地図（迷子にならないために）
 
-### 3-1. Metaでアプリを作る
-1. [developers.facebook.com/apps](https://developers.facebook.com/apps) →「アプリを作成」→ ユースケース **Threads**
-2. 権限に次の**3つ**を付与（⚠️ 3つ目が連投に必須）：
+1. GitHubアカウントを作る
+2. テンプレから「自分のコピー」を作る
+3. Metaでアプリを作り、Threadsの鍵を用意
+4. 他の鍵（Anthropic・YouTube・GH_PAT）を用意
+5. 4〜6個の鍵を、GitHubの金庫（Secrets）に入れる
+6. **ボタンだけ**でThreadsトークンを取得
+7. 設定ファイルを自分用に書き換える
+8. 「初期化」ボタンを押す → 完成、あとは自動
+
+では1つずつ。
+
+---
+
+## ステップ1：GitHubアカウントを作る
+
+1. [github.com](https://github.com/) を開く
+2. 右上 **「Sign up」** をクリック
+3. メールアドレス・パスワード・ユーザー名を入れて登録（無料プランでOK）
+4. 届いたメールで本人確認
+
+> すでにアカウントがあればログインするだけでOK。
+
+---
+
+## ステップ2：テンプレから「自分のコピー」を作る
+
+1. 配布された **テンプレのURL** を開く（例: `https://github.com/＜配布元＞/threads-auto`）
+2. 緑色の **「Use this template」→「Create a new repository」** をクリック
+3. **Repository name**：好きな名前（例 `my-threads`）
+4. **Private** を選ぶ（⚠️ 公開にしない）
+5. **「Create repository」** をクリック
+
+これで、あなた専用のコピー（リポジトリ）ができました。以降の作業は、この
+**自分のリポジトリのページ**で行います。
+
+---
+
+## ステップ3：Metaでアプリを作り、Threadsの鍵を用意
+
+Threadsに自動投稿するには、Meta（Threadsの運営会社）で「アプリ」を作る必要があります。
+
+1. [developers.facebook.com/apps](https://developers.facebook.com/apps) を開いてログイン
+2. **「アプリを作成」** → ユースケースで **「Threads」** を選んで作成
+3. 権限（アクセス許可）に、次の**3つ**を追加する：
    - `threads_basic`
    - `threads_content_publish`
-   - **`threads_manage_replies`**（これが無いと返信＝連投がHTTP500で失敗します）
-3. 「アプリの設定→ベーシック」で **アプリID** と **app secret** を控える
-4. ユースケースの設定で **Redirect Callback URLs** に `https://localhost/` を登録
-5. **Threads testers** に自分の運用アカウントを追加し、そのアカウント側で承認
+   - **`threads_manage_replies`** ← ⚠️**これが無いと連投（返信でつなぐ）が失敗します。必ず追加**
+4. **「アプリの設定 → ベーシック」** の画面で、次の2つを控える（後で使う）：
+   - **アプリID**（数字）
+   - **app secret**（「表示」ボタンを押すと見える文字列）
+5. Threadsユースケースの設定で、**Redirect Callback URLs** に `https://localhost/` を登録して保存
+6. 同じ設定内の **Threads testers** に、あなたの運用アカウントを追加 → そのアカウント側で承認
+   （ウェブ版Threadsの設定から、届いた招待を承認します）
 
-### 3-2. `.env` にアプリ情報を書く
-```
-THREADS_APP_ID=（アプリID）
-THREADS_APP_SECRET=（app secret）
-THREADS_REDIRECT_URI=https://localhost/
-```
-
-### 3-3. トークンを取得
-```bash
-.venv/bin/python src/get_token.py url
-```
-表示URLを**運用アカウントでログイン中のブラウザ**で開く →「許可」→ `https://localhost/?code=XXXX#_` の
-`code=`の後ろ〜`#`の前をコピー →
-```bash
-.venv/bin/python src/get_token.py exchange --code "コピーしたcode"
-```
-出てきた `THREADS_USER_ID` と `THREADS_ACCESS_TOKEN` を控える（`.env` にも書いておくと後がラク）。
-
-> トークンは約60日で失効。`refresh.yml`（月1）が自動延命します。
+> 「アプリID」「app secret」「`https://localhost/`」の3つを、次のステップでGitHubに入れます。
 
 ---
 
-## 4. 他のキーを取得
+## ステップ4：他の鍵（Anthropic・YouTube・GH_PAT）を用意
 
-- **Anthropic（Claude）**：[console.anthropic.com](https://console.anthropic.com/) で APIキー（`sk-ant-...`）
-- **YouTube Data API v3**：[Google Cloud Console](https://console.cloud.google.com/) で API有効化 → APIキー
-- **GH_PAT**：GitHubの [Personal access tokens](https://github.com/settings/tokens) で、対象リポジトリに
-  **Contents=Read/write・Secrets=Read/write**（fine-grained）か、classicなら `repo`＋`workflow`。
-  月1のトークン自動延命（Secret更新）に使います
-- **（任意）通知Webhook**：Discord/Slackの Incoming Webhook URL
+**Anthropic（AIの鍵）**
+1. [console.anthropic.com](https://console.anthropic.com/) に登録・ログイン
+2. API Keys の画面で新しいキーを作成 → `sk-ant-...` をコピー（課金設定が必要な場合あり）
 
----
+**YouTube（動画を探す鍵）**
+1. [Google Cloud Console](https://console.cloud.google.com/) にログイン
+2. プロジェクトを作成 →「APIとサービス → ライブラリ」で **YouTube Data API v3** を有効化
+3. 「認証情報 → APIキーを作成」→ キーをコピー
 
-## 5. GitHub Secrets を登録
-
-自分のリポジトリの **Settings → Secrets and variables → Actions** に登録：
-
-| Secret 名 | 中身 | 必須 |
-|-----------|------|------|
-| `THREADS_USER_ID` | 3-3で取得 | ✅ |
-| `THREADS_ACCESS_TOKEN` | 3-3で取得（`threads_manage_replies`付き） | ✅ |
-| `ANTHROPIC_API_KEY` | Claudeのキー | ✅ |
-| `YOUTUBE_API_KEY` | YouTubeのキー | ✅ |
-| `GH_PAT` | トークン延命用 | ✅（延命を使うなら） |
-| `NOTIFY_WEBHOOK_URL` | Discord/Slack | 任意 |
+**GH_PAT（GitHubが自分の金庫を更新する鍵）**
+1. GitHubの [Personal access tokens (Fine-grained)](https://github.com/settings/personal-access-tokens) を開く
+2. 「Generate new token」→ **Repository access** で、ステップ2で作った自分のリポジトリを選ぶ
+3. **Permissions** で次を **Read and write** にする：
+   - **Contents**
+   - **Secrets**
+4. 「Generate token」→ 出てきた `github_pat_...` をコピー
 
 ---
 
-## 6. 自分用に設定を書き換える
+## ステップ5：鍵を「金庫（Secrets）」に入れる
 
-| ファイル | 中身 |
+自分のリポジトリのページで：
+
+1. 上のメニュー **「Settings」** をクリック
+2. 左メニュー **「Secrets and variables」→「Actions」**
+3. **「New repository secret」** ボタンで、下の表を**1つずつ**登録する
+   （Name＝名前、Secret＝中身。1つ入れるごとに「Add secret」）
+
+| Name（名前） | Secret（中身） |
 |---|---|
-| `config/account.json` | ハンドル・表示名・ジャンル・note誘導先（`account.example.json` を参考に） |
-| `config/slots.json` | 投稿枠の時刻・テーマ・トーン（既定 9/15/21時 JST） |
-| `config/ng_words.json` | 禁止表現 |
-| `assets/persona.md` | キャラクター（声・口調・人称） |
-| `assets/cta.md` | CTAの参考例 |
-| `assets/youtube-channels.txt` | 素材にする定番YouTubeチャンネル |
-| `kata-library/*.md` | 型（そのまま流用可。自分で `/kata-register` 相当を足すのも可） |
+| `THREADS_APP_ID` | ステップ3のアプリID |
+| `THREADS_APP_SECRET` | ステップ3のapp secret |
+| `THREADS_REDIRECT_URI` | `https://localhost/` |
+| `ANTHROPIC_API_KEY` | Anthropicのキー |
+| `YOUTUBE_API_KEY` | YouTubeのキー |
+| `GH_PAT` | GitHubのトークン（github_pat_...） |
+| `NOTIFY_WEBHOOK_URL` | （任意）Discord/SlackのWebhook。なければ登録しなくてOK |
 
-> ⚠️ **投稿枠の時刻を変えたら**、`config/slots.json` と `.github/workflows/publish.yml` の cron の
-> **両方**を合わせてください（cronはUTC。JST 9/15/21時 = UTC 0/6/12時）。
-
----
-
-## 7. 状態を初期化して反映
-
-```bash
-.venv/bin/python scripts/init_account.py    # 前運用者の在庫・履歴を空に
-git add -A && git commit -m "setup: my account" && git push
-```
-
-`.env` は `.gitignore` で除外されるので、キーがコミットされる心配はありません。
+> ⚠️ `THREADS_ACCESS_TOKEN` と `THREADS_USER_ID` は、次のステップ6で**自動的に入ります**。
+> ここでは登録しなくてOKです。
 
 ---
 
-## 8. 動作確認 → 本番
+## ステップ6：Threadsトークンを取得（ボタンだけ・パソコン不要）
 
-- GitHubの **Actions** タブで `Generate Threads Drafts` を **Run workflow → dry_run: true**（不足枠の確認）
-- 次に dry_run なしで `Generate` → `posts/queue.json` に連投が入る
-- `Publish` は枠時刻の前後に自動実行。最初はActionsのログで成否を確認
+ここが少し独特ですが、**ボタンを2回押すだけ**です。
+
+1. リポジトリ上のメニュー **「Actions」** をクリック
+   - （初回は「I understand my workflows, go ahead and enable them」が出たら押して有効化）
+2. 左の一覧から **「1. Threadsトークン取得（パソコン不要）」** を選ぶ
+3. 右の **「Run workflow」** を押す → **mode を `url`** のまま **「Run workflow」**（緑ボタン）
+4. 少し待つと実行が終わる。その**実行結果をクリック**すると、ページに
+   **「① この認可URLを開いてください」** としてURLが表示される
+5. そのURLをコピーして、**運用アカウントでログイン中のブラウザ**で開く →「許可」を押す
+6. `https://localhost/?code=XXXXX#_` という画面に飛ぶ（エラー画面でOK）。
+   アドレス欄の **`code=` の後ろ〜`#`の前**（XXXXX）をコピー
+7. もう一度 **「Run workflow」** を押し、今度は **mode を `exchange`** に変え、
+   **code の欄にさっきのXXXXXを貼って** 実行
+8. 実行結果に **「② トークン保存 完了 🎉」** と出れば成功。
+   `THREADS_ACCESS_TOKEN` と `THREADS_USER_ID` が自動でSecretsに入りました
+
+> うまくいかないとき：`code` は数十秒で無効になります。3〜6をやり直せば何度でもOK。
+> 「redirect_uri」系のエラーが出たら、ステップ3の `https://localhost/` とSecretの
+> `THREADS_REDIRECT_URI` が完全一致しているか確認。
 
 ---
 
-## 運用の注意（各自の責任で）
+## ステップ7：設定を自分用に書き換える
 
-- **GitHub Actions無料枠**：publishは「枠の前後2時間だけ15分間隔」に調整済み（`publish.yml` の cron）。
-  枠を増やす・頻度を上げると private の無料枠（月2000分）を超えることがあります。
-- **費用**：Claude生成はアカウントごとに課金。連投×3枠だと相応にかかります。
-- **Threads/Metaの規約**：自動投稿・高頻度・連投・CTAは規約グレーで、アカウント停止のリスクが
-  あります。**必ず自分のアカウントで、自己責任で**運用してください。まず1アカウントで様子を見て、
-  問題なければ調整するのが安全です。
-- **返信の読み取り**（/replies edge）にはさらに別権限が要ります。投稿だけなら不要です。
+自分のキャラクターやテーマに変えます。ファイルは**GitHubの画面上で直接編集**できます。
+
+編集のやり方（共通）：
+- リポジトリのトップでファイル名をクリック → 右上の **鉛筆アイコン（Edit）** → 書き換え →
+  緑の **「Commit changes」** を押す
+
+書き換えるファイル：
+
+| ファイル | 中身 | 注意 |
+|---|---|---|
+| `config/account.json` | ハンドル・表示名・ジャンル・note誘導先 | `config/account.example.json` が見本 |
+| `assets/persona.md` | キャラクターの声・口調・性格 | ここが投稿の「人格」になります |
+| `assets/cta.md` | CTA（プロフ誘導）の参考例 | |
+| `assets/youtube-channels.txt` | 素材にするYouTubeチャンネル（1行1つ） | |
+| `config/slots.json` | 投稿する時刻とテーマ・トーン | 既定は9/15/21時 |
+| `config/ng_words.json` | 使ってほしくない表現 | |
+
+> ⚠️ `.json` ファイルは記号（`{ } " ,`）を壊さないよう、**「" "（ダブルクォート）の中の文字だけ**
+> 書き換えてください。記号を消すと動かなくなります。
+>
+> ⚠️ 投稿時刻を変えたい場合は、`config/slots.json` と `.github/workflows/publish.yml` の中の
+> `cron` の**両方**を直す必要があります（難しければそのままの時刻を推奨）。
 
 ---
 
-## トラブル早見表
+## ステップ8：初期化して完成
+
+テンプレには見本のデータ（前の人の投稿在庫）が入っているので、それを空にします。
+
+1. **「Actions」** タブ → **「2. 初期化（前の人のデータを空にする）」** を選ぶ
+2. **「Run workflow」** → 実行
+
+これで完成です！ 以降は自動で、
+- **毎日3時**：AIが3日分の連投を作って貯める
+- **9時・15時・21時**：貯めた連投を1つずつ投稿
+
+してくれます。**あなたは何もしなくてOK**です。
+
+---
+
+## 最初の動作確認（やっておくと安心）
+
+- 「Actions」→ **「Generate Threads Drafts」** →「Run workflow」で **dry_run を true** にして実行
+  → エラーが出なければキー類は正しく入っています
+- 続けて dry_run なしで実行すると、`posts/queue.json` に連投が作られます
+- 「Publish Threads Posts」は投稿時刻の前後に自動で動きます。最初は「Actions」のログで
+  成功/失敗を確認しましょう
+
+---
+
+## 大切な注意（必ず読んでください）
+
+- **費用は自己負担**：AI（Anthropic）は投稿を作るたびに少額かかります。連投×1日3回だと
+  相応の金額になります。使いすぎが不安なら、Anthropicの利用上限を設定してください。
+- **規約リスク**：SNSへの自動投稿・高頻度・毎回の宣伝リンクは、Threads/Metaの規約上グレーで、
+  **アカウント停止のリスク**があります。**必ず自分のアカウントで、自己責任で**行ってください。
+  まずは様子を見ながら、問題なければ続ける、が安全です。
+- **GitHub無料枠**：このシステムは無料枠に収まるよう調整済みですが、投稿回数を増やすと
+  超えることがあります。
+
+---
+
+## 困ったとき（症状 → 対処）
 
 | 症状 | 原因・対処 |
 |---|---|
-| 連投が繋がらず単体投稿になる | トークンに `threads_manage_replies` が無い → 権限追加＋トークン取り直し |
-| 返信作成が HTTP 500（unknown error） | 同上（返信権限不足） |
-| `redirect_uri` エラー | アプリ登録値と `.env` の `THREADS_REDIRECT_URI` を完全一致させる |
-| 生成が全滅 | YouTubeキー未設定／チャンネルが空／字幕なし動画ばかり |
-| Actionsが動かない | Secrets未登録／ワークフローがdisabled／無料枠切れ |
+| 連投がバラバラの投稿になる（返信でつながらない） | トークンに `threads_manage_replies` が無い → ステップ3で権限追加し、ステップ6でトークンを取り直す |
+| トークン取得で「redirect_uri」エラー | ステップ3の `https://localhost/` とSecretの `THREADS_REDIRECT_URI` を完全一致させる |
+| `code` を貼っても失敗する | codeは数十秒で失効。ステップ6の3〜7をやり直す |
+| 何も投稿されない | ①ステップ8の初期化をしたか ②Secretsが全部入っているか ③Actionsが有効か を確認 |
+| 生成が全部失敗する | YouTubeキーが未登録／`youtube-channels.txt` が空／字幕の無い動画ばかり |
+
+わからないところは、その画面のスクリーンショットを撮って質問すると解決が早いです。

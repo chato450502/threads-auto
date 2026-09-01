@@ -1,0 +1,32 @@
+name: 2. 初期化（前の人のデータを空にする）
+
+# テンプレから作ったばかりのとき、前運用者の投稿在庫・履歴を空に戻す。
+# 自動投稿を始める前に1回だけ実行する。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 状態ファイルを空に初期化
+        run: python scripts/init_account.py
+      - name: コミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add posts/ fallback/evergreen.json
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "chore: 初期化（新アカウント用にデータを空に）[skip ci]"
+            git push
+          fi

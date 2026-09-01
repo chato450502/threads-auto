@@ -41,11 +41,18 @@ def cmd_url(_args):
         "response_type": "code",
     }
     url = AUTH_BASE + "?" + urllib.parse.urlencode(params)
-    print("\n▼ このURLをブラウザで開き、『みれい』としてログインして許可してください:\n")
+    print("\n▼ このURLをブラウザで開き、運用アカウントでログインして許可してください:\n")
     print(url)
     print("\n許可すると " + redirect + " に飛びます（ページは表示されなくてOK）。")
-    print("アドレスバーの ?code= の後ろの文字列をコピーして、次を実行:")
-    print('  .venv/bin/python src/get_token.py exchange --code "<コピーしたcode>"\n')
+    print("アドレスバーの ?code= の後ろ〜#の前の文字列をコピーしてください。\n")
+    # GitHub Actions 上で実行された場合は、実行結果ページに見やすく表示する
+    tc.summary_section(
+        "① この認可URLを開いてください",
+        "下のURLをコピーして、**運用アカウントでログイン中のブラウザ**で開き「許可」を押します。\n\n"
+        f"```\n{url}\n```\n\n"
+        f"→ `{redirect}?code=XXXX#_` に飛ぶので、`code=` の後ろ〜`#`の前（XXXX）をコピー。\n\n"
+        "次に、このワークフローをもう一度 **Run workflow** し、mode を `exchange`、"
+        "code 欄にその XXXX を貼って実行してください。")
 
 
 def _clean_code(code: str) -> str:
@@ -102,6 +109,22 @@ def cmd_exchange(args):
         username = ""
     print(f"[3/3] アカウント確認 OK（id={user_id} {('@'+username) if username else ''}）\n")
 
+    if getattr(args, "save_secrets", False):
+        # GitHub Actions から: 取得したトークンをそのままリポジトリのSecretsへ保存
+        import refresh_token as rt
+        repo = tc.env("GITHUB_REPOSITORY", required=True)
+        pat = tc.env("GH_PAT", required=True)
+        rt.update_secret(repo, pat, "THREADS_ACCESS_TOKEN", long_token)
+        rt.update_secret(repo, pat, "THREADS_USER_ID", str(user_id))
+        print("[secrets] THREADS_ACCESS_TOKEN / THREADS_USER_ID を保存しました")
+        tc.summary_section(
+            "② トークン保存 完了 🎉",
+            f"アカウント **@{username}**（id={user_id}）のトークンを取得し、"
+            "`THREADS_ACCESS_TOKEN` と `THREADS_USER_ID` をこのリポジトリのSecretsに保存しました。\n\n"
+            f"有効期限は約{expires_in // 86400}日。毎月自動で延命されます。\n\n"
+            "これで投稿の準備は完了です。")
+        return
+
     print("=" * 60)
     print("以下を GitHub Secrets（または .env）に設定してください:")
     print("=" * 60)
@@ -118,6 +141,8 @@ def main():
     sub.add_parser("url", help="認可URLを表示").set_defaults(func=cmd_url)
     ex = sub.add_parser("exchange", help="codeを短期→長期に交換")
     ex.add_argument("--code", required=True, help="リダイレクトURLの ?code= の値")
+    ex.add_argument("--save-secrets", dest="save_secrets", action="store_true",
+                    help="取得したトークンをGitHub Secretsに保存（Actions用）")
     ex.set_defaults(func=cmd_exchange)
     args = ap.parse_args()
     args.func(args)
