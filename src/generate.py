@@ -203,9 +203,20 @@ def _clean_post(p: str) -> str:
     return "\n".join(lines).strip()
 
 
+def _dedup_consecutive(posts: list[str]) -> list[str]:
+    """連続する同一（またはほぼ同一）の投稿を1つにまとめる（同じ投稿の2連続を防ぐ）。"""
+    out = []
+    for p in posts:
+        norm = re.sub(r"\s+", "", p)
+        if out and re.sub(r"\s+", "", out[-1]) == norm:
+            continue
+        out.append(p)
+    return out
+
+
 def _split_posts(text: str) -> list[str]:
     parts = [_clean_post(p) for p in (text or "").strip().split(POST_DELIM)]
-    return [p for p in parts if p]
+    return _dedup_consecutive([p for p in parts if p])
 
 
 def validate_posts(posts: list[str]) -> list[str]:
