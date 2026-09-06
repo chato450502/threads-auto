@@ -80,21 +80,59 @@ def iso8601_to_seconds(dur):
 # ----------------------------------------------------------------------------
 # 字幕取得
 # ----------------------------------------------------------------------------
-def get_transcript_text(video_id):
-    """youtube-transcript-api 1.x 系で字幕を取得。取得できなければ None。"""
+def _transcript_via_apify(video_id):
+    """Apify経由で字幕を取得（クラウド/データセンターIPのブロック回避用）。取得できなければ None。
+
+    YouTubeはGitHub Actions等のIPからの字幕取得をブロックするため、Apifyのインフラ経由で取る。
+    """
+    token = common.env("APIFY_TOKEN")
+    if not token:
+        return None
+    actor = common.env("APIFY_TRANSCRIPT_ACTOR", "pintostudio~youtube-transcript-scraper")
+    url = (f"https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items"
+           f"?token={urllib.parse.quote(token)}")
+    body = json.dumps({"videoUrl": f"https://www.youtube.com/watch?v={video_id}"}).encode("utf-8")
+    req = urllib.request.Request(url, data=body,
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:  # noqa: BLE001
+        common.eprint(f"[skip] Apify字幕取得失敗 {video_id}: {e}")
+        return None
+    # 出力形式: [{"data": [{"start","dur","text"}, ...]}]
+    segs = []
+    for item in (data or []):
+        for s in (item.get("data") or []):
+            t = (s.get("text") or "").strip()
+            if t:
+                segs.append(t)
+    text = "\n".join(segs).strip()
+    return text or None
+
+
+def _transcript_via_library(video_id):
+    """youtube-transcript-api で字幕を取得（ローカル/住宅IP用のフォールバック）。"""
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
     except ImportError:
-        sys.exit("[ERROR] youtube-transcript-api 未インストール。"
-                 " .venv/bin/pip install youtube-transcript-api")
+        return None
     try:
         api = YouTubeTranscriptApi()
         fetched = api.fetch(video_id, languages=["ja", "ja-JP", "en"])
         parts = [snippet.text for snippet in fetched]
-        return "\n".join(p for p in parts if p and p.strip())
-    except Exception as e:
-        common.eprint(f"[skip] 字幕取得失敗 {video_id}: {e}")
+        return "\n".join(p for p in parts if p and p.strip()) or None
+    except Exception as e:  # noqa: BLE001
+        common.eprint(f"[skip] 字幕取得失敗(lib) {video_id}: {e}")
         return None
+
+
+def get_transcript_text(video_id):
+    """字幕を取得。Apify優先（クラウドでも動く）→ ダメならローカルライブラリ。取得不可は None。"""
+    text = _transcript_via_apify(video_id)
+    if text:
+        return text
+    return _transcript_via_library(video_id)
 
 
 def save_transcript(video_id, title=None):
