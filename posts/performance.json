@@ -1,85 +1,173 @@
 {
-  "generated_at": "2026-09-01T23:16:27.995743+09:00",
+  "generated_at": "2026-09-07T02:05:56.769693+09:00",
   "per_kata": {
     "contrast-hook-mechanism": {
       "samples": [
         {
           "slot_key": "2026-08-31 15:00",
           "root_id": "18107461415596270",
-          "views": 485,
+          "views": 586,
           "likes": 1,
           "replies": 3,
           "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-02 09:00",
+          "root_id": "17918729493220349",
+          "views": 4504,
+          "likes": 6,
+          "replies": 4,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-03 21:00",
+          "root_id": "17904227826486225",
+          "views": 4375,
+          "likes": 10,
+          "replies": 4,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-05 15:00",
+          "root_id": "18111705332114811",
+          "views": 29970,
+          "likes": 54,
+          "replies": 4,
+          "reposts": 1
         }
       ],
-      "post_count": 1,
-      "avg_views": 485.0,
-      "avg_likes": 1.0,
-      "total_views": 485
+      "post_count": 4,
+      "avg_views": 9858.8,
+      "avg_likes": 17.8,
+      "total_views": 39435
     },
     "declarative-bullet-summary": {
       "samples": [
         {
           "slot_key": "2026-08-31 21:00",
           "root_id": "18204049273371938",
-          "views": 8520,
-          "likes": 79,
+          "views": 8693,
+          "likes": 81,
           "replies": 1,
           "reposts": 2
+        },
+        {
+          "slot_key": "2026-09-02 15:00",
+          "root_id": "17953033632251044",
+          "views": 8907,
+          "likes": 36,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-04 09:00",
+          "root_id": "18146490739555796",
+          "views": 31687,
+          "likes": 110,
+          "replies": 2,
+          "reposts": 1
         }
       ],
-      "post_count": 1,
-      "avg_views": 8520.0,
-      "avg_likes": 79.0,
-      "total_views": 8520
+      "post_count": 3,
+      "avg_views": 16429.0,
+      "avg_likes": 75.7,
+      "total_views": 49287
     },
     "gap-list-comparison": {
       "samples": [
         {
           "slot_key": "2026-09-01 09:00",
           "root_id": "17902052988560871",
-          "views": 1327,
+          "views": 1468,
           "likes": 1,
+          "replies": 1,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-02 21:00",
+          "root_id": "18006531545974936",
+          "views": 11238,
+          "likes": 9,
+          "replies": 1,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-04 15:00",
+          "root_id": "18123759928863927",
+          "views": 1226,
+          "likes": 2,
           "replies": 1,
           "reposts": 0
         }
       ],
-      "post_count": 1,
-      "avg_views": 1327.0,
-      "avg_likes": 1.0,
-      "total_views": 1327
+      "post_count": 3,
+      "avg_views": 4644.0,
+      "avg_likes": 4.0,
+      "total_views": 13932
     },
     "reframe-pair-list": {
       "samples": [
         {
           "slot_key": "2026-09-01 15:00",
           "root_id": "18190008166393820",
-          "views": 946,
-          "likes": 1,
+          "views": 1506,
+          "likes": 2,
+          "replies": 1,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-03 09:00",
+          "root_id": "18121501495910297",
+          "views": 3856,
+          "likes": 13,
+          "replies": 1,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-04 21:00",
+          "root_id": "18085695707272024",
+          "views": 1621,
+          "likes": 4,
           "replies": 1,
           "reposts": 0
         }
       ],
-      "post_count": 1,
-      "avg_views": 946.0,
-      "avg_likes": 1.0,
-      "total_views": 946
+      "post_count": 3,
+      "avg_views": 2327.7,
+      "avg_likes": 6.3,
+      "total_views": 6983
     },
     "title-subtitle-education": {
       "samples": [
         {
           "slot_key": "2026-09-01 21:00",
           "root_id": "18108926903142580",
-          "views": 5835,
-          "likes": 7,
+          "views": 34382,
+          "likes": 63,
           "replies": 7,
+          "reposts": 1
+        },
+        {
+          "slot_key": "2026-09-03 15:00",
+          "root_id": "18101636984001571",
+          "views": 43962,
+          "likes": 110,
+          "replies": 8,
           "reposts": 0
+        },
+        {
+          "slot_key": "2026-09-05 09:00",
+          "root_id": "17980239696070321",
+          "views": 45378,
+          "likes": 157,
+          "replies": 8,
+          "reposts": 1
         }
       ],
-      "post_count": 1,
-      "avg_views": 5835.0,
-      "avg_likes": 7.0,
-      "total_views": 5835
+      "post_count": 3,
+      "avg_views": 41240.7,
+      "avg_likes": 110.0,
+      "total_views": 123722
     }
   }
 }
