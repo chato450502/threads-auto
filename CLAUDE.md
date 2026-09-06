@@ -5,6 +5,23 @@ Threads連投を自動生成するシステム。
 
 ---
 
+## 🤖 このテンプレを新しいアカウントで立ち上げる人／手伝うAIアシスタントへ
+
+このリポジトリは **完成済みのテンプレート** です。1から作り直す必要はありません。
+新しいアカウントで動かす完全な手順は **`SETUP.md`** にまとまっています。
+
+- **人が自分でやる場合**: `SETUP.md` を上から順に実行（GitHubのボタン操作だけで完結・パソコン不要）。
+- **AIアシスタント（Claude Code等）が手伝う場合**: まず **`SETUP.md` を必ず読み**、その手順に沿って
+  1) 操作者のAPIキー取得を案内し、2) GitHub Secrets登録・`config/account.json` などの設定編集・
+  初期化（`init-account.yml` または `scripts/init_account.py`）まで導くこと。
+  - 実際の稼働は `src/`（generate/publish/measure/optimize）＋ `.github/workflows/` が
+    **GitHub Actions 上で自動実行**する。ローカルでは常駐させない。
+  - アカウント固有値は `config/account.json`、キャラは `assets/persona.md`、
+    投稿枠は `config/slots.json`、素材チャンネルは `assets/youtube-channels.txt`。
+  - ⚠️ Threadsの連投には権限 `threads_manage_replies`、成績最適化には `threads_manage_insights` が必須。
+
+---
+
 ## アカウント設定
 
 - **運用アカウント**: @mirei_fondly（キャラクター「みれい」。人格設定は `assets/persona.md`）
