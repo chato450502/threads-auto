@@ -255,11 +255,16 @@ def generate_thread(kata: dict, transcript: str, title: str):
         f"\n- 連投は {lo}〜{hi} 投稿。素材の論点数に応じて本数を決める。"
         "\n- 内容は素材（書き起こし）から取る。型からは構造だけ。素材の言い回しをそのまま使わない。"
         "\n- 各投稿は500文字以内（日本語の文字数）。アスタリスク（*）やページラベル（[1/3]等）は使わない。"
-        f"\n- 最終投稿は、本文の流れから自然につながるCTA（プロフィール誘導）を {name} の声で新規に書く。"
-        + (f"\n- 【CTA必須ルール】最終投稿のCTAの中に、必ずアカウントのメンション「{handle}」を入れる。"
-           "タップでプロフィールに飛べてアクセス率が上がるため。文中に自然に溶け込ませる"
-           "（例:『続きは {h} のプロフから』のように、誘導文とセットでメンションを置く）。" .format(h=handle) if handle else "")
-        + (f"\n- 誘導先はプロフィールのリンク（note: {note}）。本文にURLは直接貼らず、プロフ誘導＋メンションにする。" if note else "") +
+        f"\n- 最終投稿はCTA（プロフィール誘導）。{name} の声で新規に書く。読者が思わずタップしたくなる強いCTAにする。"
+        "\n- 【CTAの作り方（クリック率重視）】"
+        "\n  1. まず読者の『理想の未来』を鮮明に描いて刺激する。今の悩み（追ってしまう/不安な夜/大事にされない）と、"
+        "手に入る未来（追われる側になって彼から連絡が来る／不安が消えて余裕を持って愛される／本命として大切にされる）の"
+        "コントラストを、みれいの声で具体的に見せる。"
+        "\n  2. その未来への『入り口』としてプロフィールのリンクを案内する（一歩踏み出すハードルを下げる言い方で）。"
+        + (f"\n  3. CTAの中に必ずアカウントのメンション「{handle}」を入れる（タップでプロフに飛べてクリック率が上がる）。"
+           if handle else "")
+        + "\n  4. 煽りすぎ・誇大表現・断定しすぎは避け、あくまで みれい の自然な語り口で。"
+        + (f"\n- 誘導先はプロフィールのnoteリンク（{note}）。本文にURLは直接貼らず、プロフ誘導＋メンションにする。" if note else "") +
         "\n\n【CTAの参考例（丸写し禁止・構成と機能だけ参考）】\n" + cta_ref[:1200] +
         f"\n\n【出力形式】各投稿を『{POST_DELIM}』の行で区切って順番に出力する。JSONやコードブロック・説明文・見出し番号は付けない。"
     )
@@ -323,6 +328,10 @@ def process(dry_run: bool):
     pool = build_video_pool(len(todo), used_videos)
     log(f"素材プール: {len(pool)}本の候補動画")
 
+    acc = load_account()
+    pinned = acc.get("pinned_post_id")
+    quote_every = int(acc.get("quote_pinned_every", 4) or 4)
+
     made = failed = 0
     pool_i = 0
     for dt, scfg in todo:
@@ -351,6 +360,8 @@ def process(dry_run: bool):
             tc.warn("生成失敗", f"枠 `{key}`（型 {kata['slug']}）で検証を通る連投を作れませんでした。")
             continue
 
+        # たまに（quote_every 回に1回）ピン留め投稿を引用する連投にする
+        quote_pinned = bool(pinned) and (len(queue) % quote_every == 0)
         queue.append({
             "id": f"gen-{key.replace(' ', 'T').replace(':', '')}",
             "slot_key": key,
@@ -359,6 +370,7 @@ def process(dry_run: bool):
             "source_video": video_id,
             "source_title": title,
             "posts": posts,
+            "quote_pinned": quote_pinned,
             "status": "pending",
             "posted_ids": [],
             "error": None,

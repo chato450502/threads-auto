@@ -94,12 +94,16 @@ def _post(url: str, params: dict) -> dict:
     return data
 
 
-def create_container(user_id: str, token: str, text: str, reply_to_id: str | None) -> str:
+def create_container(user_id: str, token: str, text: str, reply_to_id: str | None,
+                     quote_post_id: str | None = None) -> str:
     url = f"{GRAPH_API_BASE}/{user_id}/threads"
     params = {"media_type": "TEXT", "text": text, "access_token": token}
     if reply_to_id:
         # Threads APIの返信は reply_to_id（要 threads_manage_replies 権限。無いと500になる）
         params["reply_to_id"] = reply_to_id
+    if quote_post_id:
+        # 引用（quote）: 指定投稿を埋め込む。reply_to_id と併用可
+        params["quote_post_id"] = quote_post_id
     return _post(url, params)["id"]
 
 
@@ -121,14 +125,24 @@ def with_retry(fn, label: str, tries: int = RETRY_TRIES):
     raise last
 
 
-def publish_one(user_id, token, text, reply_to_id, dry_run) -> str:
+def publish_one(user_id, token, text, reply_to_id, dry_run, quote_post_id=None) -> str:
     if dry_run:
         return f"DRYRUN-{int(time.time()*1000)%100000}"
     creation_id = with_retry(
-        lambda: create_container(user_id, token, text, reply_to_id), label="create")
+        lambda: create_container(user_id, token, text, reply_to_id, quote_post_id), label="create")
     time.sleep(WAIT_SECONDS)
     return with_retry(
         lambda: publish_container(user_id, token, creation_id), label="publish")
+
+
+def load_account() -> dict:
+    p = tc.ROOT / "config" / "account.json"
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            return {}
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +158,7 @@ def process(dry_run: bool, now_override: str | None):
 
     user_id = tc.env("THREADS_USER_ID", required=not dry_run) or "DRYRUN_USER"
     token = tc.env("THREADS_ACCESS_TOKEN", required=not dry_run) or "DRYRUN_TOKEN"
+    pinned_id = load_account().get("pinned_post_id")
 
     due = slots.due_slots(now, CATCHUP_MINUTES)
     posted = failed = missing = 0
@@ -192,7 +207,12 @@ def process(dry_run: bool, now_override: str | None):
 
         try:
             for i in range(len(posted_ids), len(posts)):
-                mid = publish_one(user_id, token, posts[i], reply_to, dry_run)
+                # 最終投稿かつ引用フラグありなら、ピン留め投稿を引用する
+                qid = pinned_id if (item.get("quote_pinned") and pinned_id
+                                    and i == len(posts) - 1) else None
+                mid = publish_one(user_id, token, posts[i], reply_to, dry_run, quote_post_id=qid)
+                if qid:
+                    log("   （最終投稿でピン留め投稿を引用）")
                 posted_ids.append(mid)
                 reply_to = mid
                 state["slots"][key]["posted_ids"] = posted_ids
