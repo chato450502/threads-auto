@@ -232,7 +232,7 @@ def validate_posts(posts: list[str]) -> list[str]:
     return issues
 
 
-def generate_thread(kata: dict, transcript: str, title: str):
+def generate_thread(kata: dict, transcript: str, title: str, cta_type: str = "note"):
     client = _client()
     persona = read_text_file(PERSONA_PATH)
     common = read_text_file(COMMON_PATH)
@@ -243,6 +243,31 @@ def generate_thread(kata: dict, transcript: str, title: str):
     name = acc.get("display_name", "") or "このアカウント"
     genre = acc.get("genre", "")
     lo, hi = thread_range(kata["thread_range"])
+
+    if cta_type == "follow":
+        # フォロワー育成期: 販売せず、フォロー獲得と保存を狙うCTA
+        cta_block = (
+            "\n- 最終投稿はCTA。ただし今回の目的は【フォロー獲得】。noteのリンク誘導や販売はしない。"
+            "\n  1. 読者の『理想の未来』を一言で刺激する（追われる側になった自分／不安が消えた毎日 など）。"
+            "\n  2. 『こういう話を毎日ここでしてる』と伝え、フォローする理由を作る。"
+            + (f"\n  3. アカウントのメンション「{handle}」を入れ、『フォローしといて』と自然に促す。" if handle else "")
+            + "\n  4. 『保存しておくと後で見返せる』と保存も軽く促してよい。"
+            "\n  5. 煽らず、みれいの自然な声で。"
+        )
+    else:
+        # 販売期: 理想の未来で刺激して note（プロフのリンク）へ誘導
+        cta_block = (
+            f"\n- 最終投稿はCTA（プロフィール誘導）。{name} の声で新規に書く。読者が思わずタップしたくなる強いCTAにする。"
+            "\n- 【CTAの作り方（クリック率重視）】"
+            "\n  1. まず読者の『理想の未来』を鮮明に描いて刺激する。今の悩み（追ってしまう/不安な夜/大事にされない）と、"
+            "手に入る未来（追われる側になって彼から連絡が来る／不安が消えて余裕を持って愛される／本命として大切にされる）の"
+            "コントラストを具体的に見せる。"
+            "\n  2. その未来への『入り口』としてプロフィールのリンクを案内する（一歩踏み出すハードルを下げる言い方で）。"
+            + (f"\n  3. CTAの中に必ずアカウントのメンション「{handle}」を入れる（タップでプロフに飛べてクリック率が上がる）。"
+               if handle else "")
+            + "\n  4. 煽りすぎ・誇大表現・断定しすぎは避け、みれいの自然な語り口で。"
+            + (f"\n- 誘導先はプロフィールのnoteリンク（{note}）。本文にURLは直接貼らず、プロフ誘導＋メンションにする。" if note else "")
+        )
 
     system = (
         f"あなたは Threads アカウント {handle}「{name}」の中の人です。"
@@ -255,16 +280,7 @@ def generate_thread(kata: dict, transcript: str, title: str):
         f"\n- 連投は {lo}〜{hi} 投稿。素材の論点数に応じて本数を決める。"
         "\n- 内容は素材（書き起こし）から取る。型からは構造だけ。素材の言い回しをそのまま使わない。"
         "\n- 各投稿は500文字以内（日本語の文字数）。アスタリスク（*）やページラベル（[1/3]等）は使わない。"
-        f"\n- 最終投稿はCTA（プロフィール誘導）。{name} の声で新規に書く。読者が思わずタップしたくなる強いCTAにする。"
-        "\n- 【CTAの作り方（クリック率重視）】"
-        "\n  1. まず読者の『理想の未来』を鮮明に描いて刺激する。今の悩み（追ってしまう/不安な夜/大事にされない）と、"
-        "手に入る未来（追われる側になって彼から連絡が来る／不安が消えて余裕を持って愛される／本命として大切にされる）の"
-        "コントラストを、みれいの声で具体的に見せる。"
-        "\n  2. その未来への『入り口』としてプロフィールのリンクを案内する（一歩踏み出すハードルを下げる言い方で）。"
-        + (f"\n  3. CTAの中に必ずアカウントのメンション「{handle}」を入れる（タップでプロフに飛べてクリック率が上がる）。"
-           if handle else "")
-        + "\n  4. 煽りすぎ・誇大表現・断定しすぎは避け、あくまで みれい の自然な語り口で。"
-        + (f"\n- 誘導先はプロフィールのnoteリンク（{note}）。本文にURLは直接貼らず、プロフ誘導＋メンションにする。" if note else "") +
+        + cta_block +
         "\n\n【CTAの参考例（丸写し禁止・構成と機能だけ参考）】\n" + cta_ref[:1200] +
         f"\n\n【出力形式】各投稿を『{POST_DELIM}』の行で区切って順番に出力する。JSONやコードブロック・説明文・見出し番号は付けない。"
     )
@@ -280,12 +296,12 @@ def generate_thread(kata: dict, transcript: str, title: str):
     return _split_posts(text)
 
 
-def produce_thread(kata: dict, transcript: str, title: str):
+def produce_thread(kata: dict, transcript: str, title: str, cta_type: str = "note"):
     """検証を通る連投を作る。最大MAX_REGEN回。返り値: posts or None"""
     lo, _hi = thread_range(kata["thread_range"])
     for attempt in range(1, MAX_REGEN + 1):
         try:
-            posts = generate_thread(kata, transcript, title)
+            posts = generate_thread(kata, transcript, title, cta_type)
         except Exception as e:  # noqa: BLE001
             log(f"  [gen] {attempt}/{MAX_REGEN} 生成エラー: {e}")
             continue
@@ -331,6 +347,10 @@ def process(dry_run: bool):
     acc = load_account()
     pinned = acc.get("pinned_post_id")
     quote_every = int(acc.get("quote_pinned_every", 4) or 4)
+    cta_mode = acc.get("cta_mode", "note")          # follow=育成期 / note=販売期
+    note_every = int(acc.get("note_cta_every", 4) or 4)
+    log(f"CTAモード: {cta_mode}"
+        + (f"（{note_every}回に1回だけnote誘導、他はフォロー誘導）" if cta_mode == "follow" else ""))
 
     made = failed = 0
     pool_i = 0
@@ -353,15 +373,25 @@ def process(dry_run: bool):
             tc.warn("素材切れ", f"枠 `{key}`: 字幕の取れる未使用動画がありませんでした。")
             continue
 
-        log(f"[slot] {key} 型={kata['slug']} 素材=『{title[:30]}』")
-        posts = produce_thread(kata, transcript, title)
+        # この連投の通し位置でCTA種別を決める
+        idx = len(queue)
+        if cta_mode == "follow":
+            cta_type = "note" if (idx % note_every == 0) else "follow"
+        else:
+            cta_type = "note"
+
+        log(f"[slot] {key} 型={kata['slug']} CTA={cta_type} 素材=『{title[:30]}』")
+        posts = produce_thread(kata, transcript, title, cta_type)
         if not posts:
             failed += 1
             tc.warn("生成失敗", f"枠 `{key}`（型 {kata['slug']}）で検証を通る連投を作れませんでした。")
             continue
 
-        # たまに（quote_every 回に1回）ピン留め投稿を引用する連投にする
-        quote_pinned = bool(pinned) and (len(queue) % quote_every == 0)
+        # ピン留め引用は「note誘導の回」だけ（販売の後押し）。follow期はnoteの回に、note期はquote_everyに1回
+        if cta_mode == "follow":
+            quote_pinned = bool(pinned) and cta_type == "note"
+        else:
+            quote_pinned = bool(pinned) and (idx % quote_every == 0)
         queue.append({
             "id": f"gen-{key.replace(' ', 'T').replace(':', '')}",
             "slot_key": key,
@@ -370,6 +400,7 @@ def process(dry_run: bool):
             "source_video": video_id,
             "source_title": title,
             "posts": posts,
+            "cta_type": cta_type,
             "quote_pinned": quote_pinned,
             "status": "pending",
             "posted_ids": [],
