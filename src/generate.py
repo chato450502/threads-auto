@@ -48,6 +48,17 @@ ACCOUNT_PATH = tc.ROOT / "config" / "account.json"
 
 PAGE_LABEL = re.compile(r"\[\s*\d+\s*/\s*\d+\s*\]")
 
+# 絵文字検出（安全網）。絵文字が1つでもあれば再生成させる。
+# regex が使えれば絵文字だけを正確に拾う \p{Extended_Pictographic} を使い、
+# 無ければ主要な絵文字ブロックの近似レンジで代替する（数字・全角記号は誤検出しない）。
+try:
+    import regex as _reglib  # type: ignore
+    _EMOJI = _reglib.compile(r"\p{Extended_Pictographic}")
+except Exception:  # noqa: BLE001
+    _EMOJI = re.compile(
+        "[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F0FF"
+        "\U00002190-\U000021FF\U00002B00-\U00002BFF\U0000FE00-\U0000FE0F\U0000200D]")
+
 
 # ---------------------------------------------------------------------------
 # 入出力
@@ -229,6 +240,8 @@ def validate_posts(posts: list[str]) -> list[str]:
             issues.append(f"{i}本目 アスタリスク")
         if PAGE_LABEL.search(p):
             issues.append(f"{i}本目 ページラベル")
+        if _EMOJI.search(p):
+            issues.append(f"{i}本目 絵文字")
     return issues
 
 
@@ -280,6 +293,9 @@ def generate_thread(kata: dict, transcript: str, title: str, cta_type: str = "no
         f"\n- 連投は {lo}〜{hi} 投稿。素材の論点数に応じて本数を決める。"
         "\n- 内容は素材（書き起こし）から取る。型からは構造だけ。素材の言い回しをそのまま使わない。"
         "\n- 各投稿は500文字以内（日本語の文字数）。アスタリスク（*）やページラベル（[1/3]等）は使わない。"
+        "\n- 絵文字・顔文字・記号アートは一切使わない（CTAも含めて全て）。感情は言葉で表現する。"
+        "\n- AI量産っぽさ・スパム感を出さない。文の長短に緩急をつけ、整いすぎた対句や毎回同じ入り方を避け、"
+        "決まり文句に頼らず素材の具体で語る。声に出して自然な、生身の人が喋っている文章にする。"
         + cta_block +
         "\n\n【CTAの参考例（丸写し禁止・構成と機能だけ参考）】\n" + cta_ref[:1200] +
         f"\n\n【出力形式】各投稿を『{POST_DELIM}』の行で区切って順番に出力する。JSONやコードブロック・説明文・見出し番号は付けない。"
