@@ -45,6 +45,7 @@ CTA_REF_PATH = tc.ROOT / "assets" / "cta.md"
 COMMON_PATH = KATA_DIR / "_common-modules.md"
 CLAUDE_MD = tc.ROOT / "CLAUDE.md"
 ACCOUNT_PATH = tc.ROOT / "config" / "account.json"
+NG_WORDS_PATH = tc.ROOT / "config" / "ng_words.json"
 
 PAGE_LABEL = re.compile(r"\[\s*\d+\s*/\s*\d+\s*\]")
 
@@ -58,6 +59,20 @@ except Exception:  # noqa: BLE001
     _EMOJI = re.compile(
         "[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F0FF"
         "\U00002190-\U000021FF\U00002B00-\U00002BFF\U0000FE00-\U0000FE0F\U0000200D]")
+
+
+_NG_WORDS_CACHE = None
+
+
+def load_ng_words() -> list[str]:
+    """config/ng_words.json の禁止表現リストを読む（1回だけ読んでキャッシュ）。
+    誇大・薬機法的な表現などを部分一致で弾く。空・欠損なら空リスト。"""
+    global _NG_WORDS_CACHE
+    if _NG_WORDS_CACHE is None:
+        data = load_json(NG_WORDS_PATH, {}) or {}
+        words = data.get("ng_words") if isinstance(data, dict) else data
+        _NG_WORDS_CACHE = [w for w in (words or []) if isinstance(w, str) and w.strip()]
+    return _NG_WORDS_CACHE
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +257,9 @@ def validate_posts(posts: list[str]) -> list[str]:
             issues.append(f"{i}本目 ページラベル")
         if _EMOJI.search(p):
             issues.append(f"{i}本目 絵文字")
+        for w in load_ng_words():
+            if w in p:  # 部分一致（誇大・薬機法的な表現など）
+                issues.append(f"{i}本目 禁止表現「{w}」")
     return issues
 
 
@@ -296,6 +314,8 @@ def generate_thread(kata: dict, transcript: str, title: str, cta_type: str = "no
         "\n- 絵文字・顔文字・記号アートは一切使わない（CTAも含めて全て）。感情は言葉で表現する。"
         "\n- AI量産っぽさ・スパム感を出さない。文の長短に緩急をつけ、整いすぎた対句や毎回同じ入り方を避け、"
         "決まり文句に頼らず素材の具体で語る。声に出して自然な、生身の人が喋っている文章にする。"
+        + (("\n- 次の表現は誇大・スパム判定リスクがあるため一切使わない（言い換える）: "
+            + "／".join(_ng)) if (_ng := load_ng_words()) else "")
         + cta_block +
         "\n\n【CTAの参考例（丸写し禁止・構成と機能だけ参考）】\n" + cta_ref[:1200] +
         f"\n\n【出力形式】各投稿を『{POST_DELIM}』の行で区切って順番に出力する。JSONやコードブロック・説明文・見出し番号は付けない。"
