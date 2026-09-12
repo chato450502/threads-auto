@@ -891,8 +891,14 @@
     ],
     "cta_type": "follow",
     "quote_pinned": false,
-    "status": "pending",
-    "posted_ids": [],
+    "status": "posted",
+    "posted_ids": [
+      "18352708276175487",
+      "18016534367736204",
+      "18108594719609378",
+      "18108069809034947",
+      "18113606822067307"
+    ],
     "error": null,
     "created_at": "2026-09-12T16:56:53.253564+09:00"
   },
