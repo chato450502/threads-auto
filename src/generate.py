@@ -188,8 +188,10 @@ def needed_slots(queue: list):
 def build_video_pool(need: int, used_ids: set) -> list[dict]:
     """定番チャンネルから、未使用・2分以上・再生回数上位の動画を集める。"""
     pool, seen = [], set()
+    # ジャンル判定フィルタで多くが落ちうるので、候補は多めに集める
+    target = need * 4 + 12
     for ch in yt.load_channel_list():
-        if len(pool) >= need + 3:
+        if len(pool) >= target:
             break
         try:
             vids = yt.rank_channel_videos(ch, recent=30, min_minutes=2)
@@ -221,6 +223,56 @@ def load_account() -> dict:
         if m:
             acc["note_link"] = m.group(1)
     return acc
+
+
+_GENRE_CACHE: dict[str, bool] = {}
+
+
+def title_on_genre(title: str, acc: dict) -> bool:
+    """動画タイトルがアカウントのジャンル素材として適切かをAIで判定（YES/NO）。
+    アカウントの genre / research_keywords を基準に、ジャンルと明確に無関係な題材を弾く。
+    API失敗時はキーワードで簡易フォールバック（キーワード未設定なら通す=fail-open）。"""
+    title = (title or "").strip()
+    if not title:
+        return False
+    if title in _GENRE_CACHE:
+        return _GENRE_CACHE[title]
+    genre = acc.get("genre", "") or ""
+    keywords = [k for k in (acc.get("research_keywords") or []) if k]
+    if not genre and not keywords:
+        return True  # ジャンル未設定なら判定しない（従来どおり全採用）
+
+    ok = None
+    try:
+        client = _client()
+        sys_p = (
+            "あなたはSNS運用の編集者です。与えられたYouTube動画タイトルが、"
+            "次のアカウントの投稿素材として『ジャンル的に直接ふさわしいか』だけを判定します。\n"
+            + (f"アカウントのジャンル: {genre}\n" if genre else "")
+            + (f"関連キーワード: {', '.join(keywords)}\n" if keywords else "")
+            + "上記ジャンルに少しでも直接関係する内容なら『適切(YES)』とします"
+            "（恋愛・異性関係・パートナーシップ・愛され方・追われ方・片思い・復縁・結婚・男性心理 などに"
+            "関わるものは適切）。\n"
+            "一方、ジャンルと明確に無関係な別分野のテーマ（健康・病気・自律神経・メンタルヘルス・お金・節約・"
+            "仕事術・ファッション/美容・人間関係一般・一般的な自己啓発 など、恋愛と直接結びつかないもの）は"
+            "『不適切(NO)』とします。判断に迷う一般論はNO寄りにします。\n"
+            "出力は YES か NO の一語だけ。"
+        )
+        resp = client.messages.create(
+            model=MODEL, max_tokens=5, system=sys_p,
+            messages=[{"role": "user", "content": f"タイトル: {title}"}])
+        ans = "".join(b.text for b in resp.content if b.type == "text").strip().upper()
+        if ans.startswith("Y"):
+            ok = True
+        elif ans.startswith("N"):
+            ok = False
+    except Exception as e:  # noqa: BLE001
+        log(f"  [warn] ジャンル判定失敗（キーワードで代替）: {e}")
+    if ok is None:
+        # フォールバック: 関連キーワードのどれかをタイトルに含めば可
+        ok = any(k in title for k in keywords) if keywords else True
+    _GENRE_CACHE[title] = ok
+    return ok
 
 
 def _clean_post(p: str) -> str:
@@ -395,18 +447,24 @@ def process(dry_run: bool):
         slot_date = key.split(" ")[0]
         kata = choose_kata(katas, queue, slot_date)
 
-        # 素材を確保（字幕が取れる動画に当たるまでプールを進める）
+        # 素材を確保（ジャンルに合う＋字幕が取れる動画に当たるまでプールを進める）
         transcript = title = video_id = None
         while pool_i < len(pool):
             cand = pool[pool_i]
             pool_i += 1
+            # アカウントの趣旨（ジャンル）から外れた動画は素材にしない
+            if not title_on_genre(cand["title"], acc):
+                log(f"  [skip] ジャンル外の動画: 『{cand['title'][:34]}』")
+                continue
             t = yt.get_transcript_text(cand["id"])
             if t and len(t) > 200:
                 transcript, title, video_id = t, cand["title"], cand["id"]
                 break
         if not transcript:
             failed += 1
-            tc.warn("素材切れ", f"枠 `{key}`: 字幕の取れる未使用動画がありませんでした。")
+            tc.warn("素材切れ",
+                    f"枠 `{key}`: ジャンルに合い字幕の取れる未使用動画がありませんでした。"
+                    "（チャンネルの整理や research_keywords の見直しを検討してください）")
             continue
 
         # この連投の通し位置でCTA種別を決める
