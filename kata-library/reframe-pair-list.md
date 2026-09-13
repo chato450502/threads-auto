@@ -8,7 +8,7 @@ hook: 見出し文で「（ある属性の人）はこう言い換えている�
 engagement: 保存
 funnel_role: 認知・教育
 uses: 3
----
+active: false---
 
 ## 適合する素材の特徴
 
