@@ -989,8 +989,12 @@
     ],
     "cta_type": "note",
     "quote_pinned": true,
-    "status": "pending",
-    "posted_ids": [],
+    "status": "posted",
+    "posted_ids": [
+      "18390575746207326",
+      "18093404429652323",
+      "17901102009663599"
+    ],
     "error": null,
     "created_at": "2026-09-12T16:59:00.571661+09:00"
   },
