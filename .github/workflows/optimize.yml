@@ -31,7 +31,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           GRAPH_API_BASE: "https://graph.threads.net/v1.0"
-          GENERATE_MODEL: "claude-sonnet-4-6"
+          GENERATE_MODEL: "claude-opus-5-5"
+          GENERATE_EFFORT: "medium"
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
         run: python src/optimize.py
       - name: 変更をコミット
