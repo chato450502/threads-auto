@@ -31,7 +31,17 @@ from threads_common import log
 sys.path.insert(0, str(tc.ROOT / "scripts"))
 import fetch_youtube as yt  # noqa: E402
 
-MODEL = tc.env("GENERATE_MODEL", "claude-sonnet-4-6")
+# 連投を書くモデル（Opus 5.5）。Opusは「考える処理」が常にオンで、その分も max_tokens に含まれる。
+# そのため出力枠（GENERATE_MAX_TOKENS）は広め、考える量は effort（既定 medium）で調整する。
+MODEL = tc.env("GENERATE_MODEL", "claude-opus-5-5")
+EFFORT = tc.env("GENERATE_EFFORT", "medium")
+MAX_TOKENS = int(tc.env("GENERATE_MAX_TOKENS", "16000"))
+# 素材タイトルのYES/NO判定のような軽い分類は、安価で十分な Sonnet のまま（Opusだと高く、max_tokens=5では
+# 考える処理で枠が尽きて判定できない）。
+FILTER_MODEL = tc.env("FILTER_MODEL", "claude-sonnet-4-6")
+# MODEL がエラー・途切れ・拒否のときに使う代替（従来どおりの Sonnet）。空にすると代替なし。
+FALLBACK_MODEL = tc.env("FALLBACK_MODEL", "claude-sonnet-4-6")
+FALLBACK_MAX_TOKENS = 4000
 INVENTORY_DAYS = 3
 SLOTS_PER_DAY_TARGET = INVENTORY_DAYS * 3
 MAX_REGEN = 3
@@ -259,7 +269,7 @@ def title_on_genre(title: str, acc: dict) -> bool:
             "出力は YES か NO の一語だけ。"
         )
         resp = client.messages.create(
-            model=MODEL, max_tokens=5, system=sys_p,
+            model=FILTER_MODEL, max_tokens=5, system=sys_p,
             messages=[{"role": "user", "content": f"タイトル: {title}"}])
         ans = "".join(b.text for b in resp.content if b.type == "text").strip().upper()
         if ans.startswith("Y"):
@@ -315,7 +325,49 @@ def validate_posts(posts: list[str]) -> list[str]:
     return issues
 
 
+_FALLBACK_NOTED = False
+
+
+def _text_of(resp) -> str:
+    """応答から text ブロックだけを連結する（Opusは先頭に thinking ブロックが付くため type で選ぶ）。"""
+    return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+
+
+def _create(client, model: str, system: str, user: str, max_tokens: int, effort: str | None = None):
+    """1回の生成呼び出し。途切れ（max_tokens）・拒否（refusal）は成功扱いにせず例外にする
+    （末尾が欠けた投稿・空の投稿が、そのまま公開されるのを防ぐ）。"""
+    kw = dict(model=model, max_tokens=max_tokens, system=system,
+              messages=[{"role": "user", "content": user}])
+    if effort:
+        kw["output_config"] = {"effort": effort}
+    resp = client.messages.create(**kw)
+    if resp.stop_reason == "max_tokens":
+        raise RuntimeError(f"{model}: 出力が上限（{max_tokens}トークン）で途切れました")
+    if resp.stop_reason == "refusal":
+        raise RuntimeError(f"{model}: 応答が拒否されました（refusal）")
+    return resp
+
+
+def _generate_text(client, system: str, user: str):
+    """MODEL で生成する。エラー・途切れ・拒否のときは FALLBACK_MODEL で1回だけ代替する。
+    返り値: (本文テキスト, 実際に使ったモデル)。代替したことは Summary/Webhook に1回だけ警告する。"""
+    global _FALLBACK_NOTED
+    try:
+        return _text_of(_create(client, MODEL, system, user, MAX_TOKENS, EFFORT)), MODEL
+    except Exception as e:  # noqa: BLE001
+        if not FALLBACK_MODEL or FALLBACK_MODEL == MODEL:
+            raise
+        log(f"  [gen] {MODEL} で生成できず {FALLBACK_MODEL} で代替: {e}")
+        if not _FALLBACK_NOTED:  # 連投ごとに通知が溢れないよう、1回の実行につき1回だけ
+            _FALLBACK_NOTED = True
+            tc.warn("連投を代替モデルで生成しました",
+                    f"`{MODEL}` で生成できませんでした（{e}）。`{FALLBACK_MODEL}` で代替しています。"
+                    "続く場合は ANTHROPIC_API_KEY・残高・モデル名を確認してください。")
+        return _text_of(_create(client, FALLBACK_MODEL, system, user, FALLBACK_MAX_TOKENS)), FALLBACK_MODEL
+
+
 def generate_thread(kata: dict, transcript: str, title: str, cta_type: str = "note"):
+    """連投を生成する。返り値: (posts, 実際に使ったモデル)"""
     client = _client()
     persona = read_text_file(PERSONA_PATH)
     common = read_text_file(COMMON_PATH)
@@ -377,19 +429,16 @@ def generate_thread(kata: dict, transcript: str, title: str, cta_type: str = "no
         f"この素材の内容だけを使い、上の型に従って {lo}〜{hi} 投稿の連投を作成してください。"
         f"各投稿を『{POST_DELIM}』で区切って出力。"
     )
-    resp = client.messages.create(
-        model=MODEL, max_tokens=4000, system=system,
-        messages=[{"role": "user", "content": user}])
-    text = "".join(b.text for b in resp.content if b.type == "text")
-    return _split_posts(text)
+    text, used = _generate_text(client, system, user)
+    return _split_posts(text), used
 
 
 def produce_thread(kata: dict, transcript: str, title: str, cta_type: str = "note"):
-    """検証を通る連投を作る。最大MAX_REGEN回。返り値: posts or None"""
+    """検証を通る連投を作る。最大MAX_REGEN回。返り値: (posts, 使ったモデル)。作れなければ (None, None)"""
     lo, _hi = thread_range(kata["thread_range"])
     for attempt in range(1, MAX_REGEN + 1):
         try:
-            posts = generate_thread(kata, transcript, title, cta_type)
+            posts, used = generate_thread(kata, transcript, title, cta_type)
         except Exception as e:  # noqa: BLE001
             log(f"  [gen] {attempt}/{MAX_REGEN} 生成エラー: {e}")
             continue
@@ -400,9 +449,9 @@ def produce_thread(kata: dict, transcript: str, title: str, cta_type: str = "not
         if issues:
             log(f"  [gen] {attempt}/{MAX_REGEN} 検証NG: {issues[:3]}")
             continue
-        log(f"  [gen] {attempt}/{MAX_REGEN} OK（{len(posts)}本連投）")
-        return posts
-    return None
+        log(f"  [gen] {attempt}/{MAX_REGEN} OK（{len(posts)}本連投 / {used}）")
+        return posts, used
+    return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -475,7 +524,7 @@ def process(dry_run: bool):
             cta_type = "note"
 
         log(f"[slot] {key} 型={kata['slug']} CTA={cta_type} 素材=『{title[:30]}』")
-        posts = produce_thread(kata, transcript, title, cta_type)
+        posts, used_model = produce_thread(kata, transcript, title, cta_type)
         if not posts:
             failed += 1
             tc.warn("生成失敗", f"枠 `{key}`（型 {kata['slug']}）で検証を通る連投を作れませんでした。")
@@ -491,6 +540,7 @@ def process(dry_run: bool):
             "slot_key": key,
             "slot_time": scfg.get("time"),
             "kata": kata["slug"],
+            "gen_model": used_model,  # 実際に書いたモデル（成績をモデル別に見比べるため）
             "source_video": video_id,
             "source_title": title,
             "posts": posts,

@@ -31,7 +31,7 @@ import fetch_threads as ft  # noqa: E402
 import measure  # noqa: E402
 import generate as g  # 型ファイルのパース・account読込を再利用  # noqa: E402
 
-MODEL = tc.env("GENERATE_MODEL", "claude-sonnet-4-6")
+MODEL = tc.env("GENERATE_MODEL", "claude-opus-5-5")
 KATA_DIR = tc.ROOT / "kata-library"
 INDEX_PATH = KATA_DIR / "INDEX.md"
 PERFORMANCE_PATH = tc.ROOT / "posts" / "performance.json"
@@ -176,9 +176,15 @@ def register_kata_from_buzz(buzz: dict, existing_slugs: list[str]) -> str | None
         "【参考：既存の型ファイルの書き方】\n" + example[:1500]
     )
     user = f"次のThreads連投（{buzz['author']}・いいね{buzz['likes']}）を型化してください:\n\n{joined[:5000]}"
-    resp = client.messages.create(model=MODEL, max_tokens=2000, system=system,
-                                  messages=[{"role": "user", "content": user}])
-    text = "".join(b.text for b in resp.content if b.type == "text").strip()
+    # Opusは「考える処理」も max_tokens に含まれるため、出力枠は generate と同じ広さにする。
+    # 途切れ・拒否（RuntimeError）は欠けた型ファイルを保存せず今週は保留にする。
+    # APIエラー（残高切れ・キー無効など）は握りつぶさず、今までどおりジョブを失敗させて気づけるようにする。
+    try:
+        resp = g._create(client, MODEL, system, user, g.MAX_TOKENS, g.EFFORT)
+    except RuntimeError as e:
+        log(f"  [warn] 型化の出力が使えません: {e}")
+        return None
+    text = g._text_of(resp).strip()
     text = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", text).strip()
 
     m = re.match(r"SLUG:\s*([a-z0-9\-]+)\s*\n(.*)$", text, re.DOTALL)
