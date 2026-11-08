@@ -8,8 +8,7 @@ hook: 二項を左右に並べた対比リストを冒頭に置き、視覚的�
 engagement: 保存・共有
 funnel_role: 認知・CTA前段
 uses: 0
-active: true
----
+active: false---
 
 ## 適合する素材の特徴
 
