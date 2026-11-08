@@ -19,7 +19,7 @@ permissions:
 
 # 実行の重複を防ぐ（前の実行が終わるまで次を走らせない）
 concurrency:
-  group: threads-publish
+  group: threads-state   # publish と generate で共有（同時に1つだけ実行）
   cancel-in-progress: false
 
 jobs:
@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main   # 起動時点ではなく「実行開始時点の最新」を読む
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -60,5 +62,10 @@ jobs:
             echo "変更なし（コミット不要）"
           else
             git commit -m "chore: update Threads slot state [skip ci]"
-            git push
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin main && git push && exit 0
+              sleep 5
+            done
+            echo "::error::記録（queue/state）の保存に失敗しました。二重投稿のおそれがあります"
+            exit 1
           fi
