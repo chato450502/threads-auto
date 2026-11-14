@@ -1793,8 +1793,12 @@
     ],
     "cta_type": "note",
     "quote_pinned": true,
-    "status": "pending",
-    "posted_ids": [],
+    "status": "posted",
+    "posted_ids": [
+      "18120497911983956",
+      "18358506178172087",
+      "17918287623496696"
+    ],
     "error": null,
     "created_at": "2026-11-12T08:56:21.183638+09:00"
   },
