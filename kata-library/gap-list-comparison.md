@@ -8,7 +8,7 @@ hook: 一方の視点を具体的シーンの箇条書きで提示し「もう�
 engagement: 保存
 funnel_role: 認知・共感形成
 uses: 1
----
+active: false---
 
 ## 適合する素材の特徴
 
