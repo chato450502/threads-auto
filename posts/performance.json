@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-16T06:38:19.758673+09:00",
+  "generated_at": "2026-11-23T07:23:16.158141+09:00",
   "per_kata": {
     "contrast-hook-mechanism": {
       "samples": [
@@ -14,15 +14,15 @@
         {
           "slot_key": "2026-09-02 09:00",
           "root_id": "17918729493220349",
-          "views": 4573,
-          "likes": 6,
+          "views": 4590,
+          "likes": 7,
           "replies": 4,
           "reposts": 0
         },
         {
           "slot_key": "2026-09-03 21:00",
           "root_id": "17904227826486225",
-          "views": 4466,
+          "views": 4467,
           "likes": 10,
           "replies": 4,
           "reposts": 0
@@ -86,7 +86,7 @@
         {
           "slot_key": "2026-09-18 21:00",
           "root_id": "18069915248576415",
-          "views": 799,
+          "views": 800,
           "likes": 3,
           "replies": 4,
           "reposts": 0
@@ -94,7 +94,7 @@
         {
           "slot_key": "2026-11-09 15:00",
           "root_id": "17915067612516420",
-          "views": 269,
+          "views": 274,
           "likes": 1,
           "replies": 4,
           "reposts": 0
@@ -102,7 +102,7 @@
         {
           "slot_key": "2026-11-11 21:00",
           "root_id": "18098669630234765",
-          "views": 22,
+          "views": 24,
           "likes": 0,
           "replies": 4,
           "reposts": 0
@@ -110,7 +110,7 @@
         {
           "slot_key": "2026-11-13 21:00",
           "root_id": "18100180544395279",
-          "views": 30,
+          "views": 35,
           "likes": 1,
           "replies": 4,
           "reposts": 0
@@ -118,23 +118,39 @@
         {
           "slot_key": "2026-11-15 21:00",
           "root_id": "18158099482525812",
-          "views": 6,
+          "views": 15,
           "likes": 0,
           "replies": 4,
           "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-17 21:00",
+          "root_id": "18063055352550660",
+          "views": 9,
+          "likes": 0,
+          "replies": 4,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-20 21:00",
+          "root_id": "18088579190319788",
+          "views": 7,
+          "likes": 0,
+          "replies": 3,
+          "reposts": 0
         }
       ],
-      "post_count": 15,
-      "avg_views": 3462.1,
-      "avg_likes": 5.6,
-      "total_views": 51931
+      "post_count": 17,
+      "avg_views": 3058.1,
+      "avg_likes": 5.0,
+      "total_views": 51987
     },
     "declarative-bullet-summary": {
       "samples": [
         {
           "slot_key": "2026-08-31 21:00",
           "root_id": "18204049273371938",
-          "views": 8786,
+          "views": 8788,
           "likes": 79,
           "replies": 1,
           "reposts": 2
@@ -142,7 +158,7 @@
         {
           "slot_key": "2026-09-02 15:00",
           "root_id": "17953033632251044",
-          "views": 9017,
+          "views": 9020,
           "likes": 36,
           "replies": 2,
           "reposts": 0
@@ -150,7 +166,7 @@
         {
           "slot_key": "2026-09-04 09:00",
           "root_id": "18146490739555796",
-          "views": 32044,
+          "views": 32045,
           "likes": 112,
           "replies": 2,
           "reposts": 0
@@ -182,7 +198,7 @@
         {
           "slot_key": "2026-09-12 09:00",
           "root_id": "18114038951021230",
-          "views": 967,
+          "views": 968,
           "likes": 29,
           "replies": 2,
           "reposts": 0
@@ -214,7 +230,7 @@
         {
           "slot_key": "2026-11-10 09:00",
           "root_id": "18185302357454691",
-          "views": 1521,
+          "views": 1544,
           "likes": 3,
           "replies": 2,
           "reposts": 0
@@ -222,7 +238,7 @@
         {
           "slot_key": "2026-11-12 15:00",
           "root_id": "18036888668887090",
-          "views": 22,
+          "views": 27,
           "likes": 0,
           "replies": 2,
           "reposts": 0
@@ -230,16 +246,40 @@
         {
           "slot_key": "2026-11-14 15:00",
           "root_id": "18120497911983956",
-          "views": 717,
+          "views": 734,
           "likes": 2,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-16 15:00",
+          "root_id": "18115368290034186",
+          "views": 51,
+          "likes": 1,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-18 21:00",
+          "root_id": "17916417918558050",
+          "views": 42,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-21 21:00",
+          "root_id": "18657516682009353",
+          "views": 155,
+          "likes": 0,
           "replies": 2,
           "reposts": 0
         }
       ],
-      "post_count": 13,
-      "avg_views": 6177.8,
-      "avg_likes": 24.5,
-      "total_views": 80312
+      "post_count": 16,
+      "avg_views": 5038.2,
+      "avg_likes": 19.9,
+      "total_views": 80612
     },
     "gap-list-comparison": {
       "samples": [
@@ -254,7 +294,7 @@
         {
           "slot_key": "2026-09-02 21:00",
           "root_id": "18006531545974936",
-          "views": 11291,
+          "views": 11292,
           "likes": 9,
           "replies": 1,
           "reposts": 0
@@ -270,7 +310,7 @@
         {
           "slot_key": "2026-09-07 15:00",
           "root_id": "18103133540616792",
-          "views": 903,
+          "views": 904,
           "likes": 4,
           "replies": 1,
           "reposts": 0
@@ -294,7 +334,7 @@
         {
           "slot_key": "2026-09-12 15:00",
           "root_id": "17987154348053161",
-          "views": 3456,
+          "views": 3458,
           "likes": 12,
           "replies": 2,
           "reposts": 0
@@ -326,7 +366,7 @@
         {
           "slot_key": "2026-11-08 15:00",
           "root_id": "18152168578538777",
-          "views": 5573,
+          "views": 5576,
           "likes": 14,
           "replies": 1,
           "reposts": 0
@@ -334,7 +374,7 @@
         {
           "slot_key": "2026-11-10 15:00",
           "root_id": "17877511128636589",
-          "views": 13472,
+          "views": 13534,
           "likes": 9,
           "replies": 2,
           "reposts": 0
@@ -342,7 +382,7 @@
         {
           "slot_key": "2026-11-12 21:00",
           "root_id": "17996300316063509",
-          "views": 43,
+          "views": 47,
           "likes": 0,
           "replies": 1,
           "reposts": 0
@@ -350,16 +390,24 @@
         {
           "slot_key": "2026-11-14 21:00",
           "root_id": "18077580665725180",
-          "views": 293,
+          "views": 299,
+          "likes": 0,
+          "replies": 1,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-16 21:00",
+          "root_id": "18100098875407105",
+          "views": 98,
           "likes": 0,
           "replies": 1,
           "reposts": 0
         }
       ],
-      "post_count": 14,
-      "avg_views": 2829.3,
-      "avg_likes": 3.9,
-      "total_views": 39610
+      "post_count": 15,
+      "avg_views": 2652.5,
+      "avg_likes": 3.6,
+      "total_views": 39787
     },
     "reframe-pair-list": {
       "samples": [
@@ -438,7 +486,7 @@
         {
           "slot_key": "2026-09-01 21:00",
           "root_id": "18108926903142580",
-          "views": 34457,
+          "views": 34458,
           "likes": 63,
           "replies": 6,
           "reposts": 0
@@ -446,16 +494,16 @@
         {
           "slot_key": "2026-09-03 15:00",
           "root_id": "18101636984001571",
-          "views": 44899,
-          "likes": 111,
+          "views": 45310,
+          "likes": 112,
           "replies": 7,
           "reposts": 0
         },
         {
           "slot_key": "2026-09-05 09:00",
           "root_id": "17980239696070321",
-          "views": 56139,
-          "likes": 165,
+          "views": 57307,
+          "likes": 166,
           "replies": 8,
           "reposts": 1
         },
@@ -478,7 +526,7 @@
         {
           "slot_key": "2026-09-11 15:00",
           "root_id": "18029993639894803",
-          "views": 10911,
+          "views": 10915,
           "likes": 42,
           "replies": 6,
           "reposts": 2
@@ -502,7 +550,7 @@
         {
           "slot_key": "2026-09-16 15:00",
           "root_id": "17902085409593152",
-          "views": 220,
+          "views": 221,
           "likes": 0,
           "replies": 7,
           "reposts": 0
@@ -510,7 +558,7 @@
         {
           "slot_key": "2026-09-18 15:00",
           "root_id": "18101418887628794",
-          "views": 2137,
+          "views": 2138,
           "likes": 2,
           "replies": 7,
           "reposts": 0
@@ -518,7 +566,7 @@
         {
           "slot_key": "2026-11-09 09:00",
           "root_id": "18105971369649749",
-          "views": 5679,
+          "views": 5727,
           "likes": 14,
           "replies": 7,
           "reposts": 0
@@ -526,7 +574,7 @@
         {
           "slot_key": "2026-11-11 15:00",
           "root_id": "18242080861316456",
-          "views": 63,
+          "views": 66,
           "likes": 0,
           "replies": 6,
           "reposts": 0
@@ -534,7 +582,7 @@
         {
           "slot_key": "2026-11-13 15:00",
           "root_id": "17998866828120840",
-          "views": 240,
+          "views": 252,
           "likes": 1,
           "replies": 7,
           "reposts": 0
@@ -542,16 +590,40 @@
         {
           "slot_key": "2026-11-15 15:00",
           "root_id": "17957940084292842",
-          "views": 1095,
+          "views": 1244,
           "likes": 4,
+          "replies": 7,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-17 15:00",
+          "root_id": "18008357004006894",
+          "views": 7847,
+          "likes": 14,
+          "replies": 6,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-19 21:00",
+          "root_id": "18097226165176908",
+          "views": 314,
+          "likes": 1,
+          "replies": 8,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-22 21:00",
+          "root_id": "17964934658998704",
+          "views": 481,
+          "likes": 1,
           "replies": 7,
           "reposts": 0
         }
       ],
-      "post_count": 14,
-      "avg_views": 11454.3,
-      "avg_likes": 28.9,
-      "total_views": 160360
+      "post_count": 17,
+      "avg_views": 10047.1,
+      "avg_likes": 24.9,
+      "total_views": 170800
     },
     "parallel-compare-authority-cta": {
       "samples": [
@@ -574,7 +646,7 @@
         {
           "slot_key": "2026-09-18 09:00",
           "root_id": "18100972181576241",
-          "views": 1509,
+          "views": 1510,
           "likes": 7,
           "replies": 6,
           "reposts": 0
@@ -582,7 +654,7 @@
         {
           "slot_key": "2026-11-07 21:00",
           "root_id": "18121490317908432",
-          "views": 202,
+          "views": 203,
           "likes": 1,
           "replies": 2,
           "reposts": 0
@@ -590,7 +662,7 @@
         {
           "slot_key": "2026-11-08 21:00",
           "root_id": "17873387937646651",
-          "views": 532,
+          "views": 536,
           "likes": 0,
           "replies": 2,
           "reposts": 0
@@ -598,7 +670,7 @@
         {
           "slot_key": "2026-11-09 21:00",
           "root_id": "17956718217282818",
-          "views": 299,
+          "views": 303,
           "likes": 1,
           "replies": 1,
           "reposts": 0
@@ -606,23 +678,23 @@
         {
           "slot_key": "2026-11-10 21:00",
           "root_id": "18111350252337527",
-          "views": 74,
+          "views": 75,
           "likes": 1,
           "replies": 2,
           "reposts": 0
         }
       ],
       "post_count": 7,
-      "avg_views": 825.9,
+      "avg_views": 827.4,
       "avg_likes": 2.1,
-      "total_views": 5781
+      "total_views": 5792
     },
     "table-only-hook-absolution-cta": {
       "samples": [
         {
           "slot_key": "2026-11-11 09:00",
           "root_id": "18610424647066274",
-          "views": 6119,
+          "views": 6129,
           "likes": 19,
           "replies": 2,
           "reposts": 0
@@ -630,7 +702,7 @@
         {
           "slot_key": "2026-11-12 09:00",
           "root_id": "17994698229025910",
-          "views": 372,
+          "views": 375,
           "likes": 4,
           "replies": 2,
           "reposts": 0
@@ -638,7 +710,7 @@
         {
           "slot_key": "2026-11-13 09:00",
           "root_id": "18139174279637378",
-          "views": 52,
+          "views": 59,
           "likes": 0,
           "replies": 2,
           "reposts": 0
@@ -646,7 +718,7 @@
         {
           "slot_key": "2026-11-14 09:00",
           "root_id": "18081319130729504",
-          "views": 2599,
+          "views": 2604,
           "likes": 5,
           "replies": 2,
           "reposts": 0
@@ -654,16 +726,120 @@
         {
           "slot_key": "2026-11-15 09:00",
           "root_id": "17926172766445582",
-          "views": 4702,
-          "likes": 30,
+          "views": 6032,
+          "likes": 31,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-16 09:00",
+          "root_id": "18022814477730234",
+          "views": 949,
+          "likes": 4,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-17 09:00",
+          "root_id": "18455656054121431",
+          "views": 433,
+          "likes": 4,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-18 15:00",
+          "root_id": "17924380161461769",
+          "views": 23,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-19 15:00",
+          "root_id": "18433809802148163",
+          "views": 10,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-20 15:00",
+          "root_id": "17994325722077470",
+          "views": 16,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-21 15:00",
+          "root_id": "18132202639867658",
+          "views": 11,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-22 15:00",
+          "root_id": "18101817134395899",
+          "views": 79,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        }
+      ],
+      "post_count": 12,
+      "avg_views": 1393.3,
+      "avg_likes": 5.6,
+      "total_views": 16720
+    },
+    "dual-definition-columns-misread-cta": {
+      "samples": [
+        {
+          "slot_key": "2026-11-18 09:00",
+          "root_id": "18121668340991852",
+          "views": 3,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-19 09:00",
+          "root_id": "18118062779020757",
+          "views": 144,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-20 09:00",
+          "root_id": "18390158929226698",
+          "views": 113,
+          "likes": 3,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-21 09:00",
+          "root_id": "18114721355142281",
+          "views": 66,
+          "likes": 0,
+          "replies": 2,
+          "reposts": 0
+        },
+        {
+          "slot_key": "2026-11-22 09:00",
+          "root_id": "18011597846785905",
+          "views": 10,
+          "likes": 0,
           "replies": 2,
           "reposts": 0
         }
       ],
       "post_count": 5,
-      "avg_views": 2768.8,
-      "avg_likes": 11.6,
-      "total_views": 13844
+      "avg_views": 67.2,
+      "avg_likes": 0.6,
+      "total_views": 336
     }
   }
 }
